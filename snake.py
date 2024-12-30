@@ -109,7 +109,7 @@ def message(msg, color, position, font=font_style, bg_color=None):
 def gameMenu():
     menu = True
     selected_option = 0
-    options = ["Play", "High Score", "Difficulty", "Quit"]
+    options = ["Play", "High Score", "Difficulty", "Resolution", "Quit"]
     while menu:
         draw_background()
         title_text = title_font.render("Snake Game", True, GREEN)
@@ -158,6 +158,8 @@ def gameMenu():
                     elif selected_option == 2:
                         changeDifficulty()
                     elif selected_option == 3:
+                        changeResolution()
+                    elif selected_option == 4:
                         pygame.quit()
                         quit()
                     fade_in()
@@ -172,6 +174,8 @@ def gameMenu():
                             showHighScore()
                         elif option == "Difficulty":
                             changeDifficulty()
+                        elif option == "Resolution":
+                            changeResolution()
                         elif option == "Quit":
                             pygame.quit()
                             quit()
@@ -303,6 +307,81 @@ def changeDifficulty():
                             difficulty_menu = False
                             gameMenu()
                         fade_in()
+
+def changeResolution():
+    global WIDTH, HEIGHT, screen
+    resolutions = [
+        (800, 600),
+        (1024, 768),
+        (1280, 720),
+        (1920, 1080),
+        'fullscreen' 
+    ]
+    options = ["800 x 600", "1024 x 768", "1280 x 720", "1920 x 1080", "Fullscreen", "Back"]
+    selected_option = 0 
+    while True:
+        draw_background()
+        title_text = title_font.render("Select Resolution", True, GREEN)
+        title_x = (WIDTH - title_text.get_width()) // 2
+        title_y = HEIGHT // 5
+        draw_text_with_outline("Select Resolution", title_font, GREEN, BLACK, title_x, title_y)
+        for i, option in enumerate(options):
+            color = WHITE if i != selected_option else BLACK 
+            option_text = font_style.render(option, True, color)
+            option_x = WIDTH // 2 - option_text.get_width() // 2
+            option_y = HEIGHT // 3 + i * 50
+            for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2), (-2, -2), (-2, 2), (2, -2), (2, 2)]:
+                outline_text = font_style.render(option, True, BLACK)
+                screen.blit(outline_text, (option_x + dx, option_y + dy))
+            screen.blit(option_text, (option_x, option_y))
+            if i == selected_option:
+                border_color = BLACK
+                bg_color = WHITE
+                pygame.draw.rect(screen, border_color, 
+                                 [option_x - 8, option_y - 8, option_text.get_width() + 16, option_text.get_height() + 16],
+                                 border_radius=15)
+                pygame.draw.rect(screen, bg_color, 
+                                 [option_x - 5, option_y - 5, option_text.get_width() + 10, option_text.get_height() + 10],
+                                 border_radius=15)
+            screen.blit(option_text, (option_x, option_y))
+        pygame.display.update()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key in [pygame.K_UP, pygame.K_w]:
+                    selected_option = (selected_option - 1) % len(options)
+                elif event.key in [pygame.K_DOWN, pygame.K_s]:
+                    selected_option = (selected_option + 1) % len(options)
+                elif event.key in [pygame.K_RETURN, pygame.K_SPACE]:
+                    if selected_option == 5:
+                        return
+                    elif selected_option == 4:
+                        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+                        WIDTH, HEIGHT = screen.get_size()  
+                    else:
+                        if resolutions[selected_option] == 'fullscreen':
+                            pass
+                        else:
+                            WIDTH, HEIGHT = resolutions[selected_option]  
+                            screen = pygame.display.set_mode((WIDTH, HEIGHT))
+                elif event.key == pygame.K_ESCAPE:
+                    return 
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = pygame.mouse.get_pos()
+                for i, option in enumerate(options):
+                    option_x = WIDTH // 2 - option_text.get_width() // 2
+                    option_y = HEIGHT // 3 + i * 50
+                    if option_x <= mouse_pos[0] <= option_x + option_text.get_width() and option_y <= mouse_pos[1] <= option_y + option_text.get_height():
+                        if i == 5: 
+                            return
+                        elif i == 4:                
+                            screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+                            WIDTH, HEIGHT = screen.get_size() 
+                        else:
+                            WIDTH, HEIGHT = resolutions[i] 
+                            screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
 def pauseMenu(score, record):
     paused = True
@@ -499,8 +578,8 @@ def gameLoop():
         pygame.draw.circle(screen, BLACK, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
         pygame.draw.circle(screen, WHITE, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 - 2)
         if special_food_timer > 0:
-            pygame.draw.circle(screen, WHITE, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
-            pygame.draw.circle(screen, BLACK, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 -2)
+            pygame.draw.circle(screen, BLACK, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
+            pygame.draw.circle(screen, DARK_GREY, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 -2)
             special_food_timer -= 1
         elif special_food_timer == 0 and random.randint(1, 100) == 1:
             special_foodx = round(random.randrange(0, WIDTH - BLOCK_SIZE) / BLOCK_SIZE) * BLOCK_SIZE
