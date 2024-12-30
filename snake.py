@@ -23,10 +23,12 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Snake Game")
 clock = pygame.time.Clock()
 BLOCK_SIZE = 20
-SPEED = 15
+SPEED = 10
 RECORD = 0
 font_style = pygame.font.SysFont("bahnschrift", 30)
+font_style_small = pygame.font.SysFont('Arial', 15)
 title_font = pygame.font.SysFont("bahnschrift", 55)
+CURRENT_DIFFICULTY = "Balanced"
 
 def fade_out(duration=100):
     fade_surface = pygame.Surface((WIDTH, HEIGHT))
@@ -61,12 +63,29 @@ def draw_text_with_outline(text, font, color, outline_color, x, y):
         screen.blit(outline_surface, (x + offset[0], y + offset[1]))
     screen.blit(text_surface, (x, y))
 
-def draw_score_bar(score, record):
+def draw_score_bar(score, record, CURRENT_DIFFICULTY):
     bar_height = 60
     pygame.draw.rect(screen, (50, 50, 50), [0, 0, WIDTH, bar_height])
     draw_text_with_outline(f"Score: {score}", font_style, (255, 255, 255), (0, 0, 0), 15, 15)
     record_x = WIDTH - font_style.size(f"Record: {record}")[0] - 15
     draw_text_with_outline(f"Record: {record}", font_style, (255, 255, 255), (0, 0, 0), record_x, 15)
+    difficulty_label = "Mode:"
+    label_x = (WIDTH - font_style.size(difficulty_label + " " + CURRENT_DIFFICULTY)[0]) // 2
+    draw_text_with_outline(difficulty_label, font_style, (255, 255, 255), (0, 0, 0), label_x, 15)
+    if CURRENT_DIFFICULTY == "Casual":
+        difficulty_color = (0, 255, 0)
+    elif CURRENT_DIFFICULTY == "Balanced":
+        difficulty_color = (255, 255, 0) 
+    elif CURRENT_DIFFICULTY == "Extreme":
+        difficulty_color = (255, 0, 0)
+    else:
+        difficulty_color = (255, 255, 255) 
+    difficulty_x = label_x + font_style.size(difficulty_label)[0] + 5
+    draw_text_with_outline(CURRENT_DIFFICULTY, font_style, difficulty_color, (0, 0, 0), difficulty_x, 15)
+    speed_text = f"Speed: {SPEED:.2f}"
+    speed_x = 20
+    speed_y = 40
+    draw_text_with_outline(speed_text, font_style_small, (255, 255, 255), (0, 0, 0), speed_x, speed_y)
 
 def read_record():
     try:
@@ -109,7 +128,7 @@ def message(msg, color, position, font=font_style, bg_color=None):
 def gameMenu():
     menu = True
     selected_option = 0
-    options = ["Play", "High Score", "Difficulty", "Resolution", "Quit"]
+    options = ["Play", "High Score", "Mode", "Resolution", "Quit"]
     while menu:
         draw_background()
         title_text = title_font.render("Snake Game", True, GREEN)
@@ -172,7 +191,7 @@ def gameMenu():
                             gameLoop()
                         elif option == "High Score":
                             showHighScore()
-                        elif option == "Difficulty":
+                        elif option == "Mode":
                             changeDifficulty()
                         elif option == "Resolution":
                             changeResolution()
@@ -234,8 +253,8 @@ def showHighScore():
 def changeDifficulty():
     difficulty_menu = True
     selected_option = 0
-    options = ["Easy", "Normal", "Hard", "Back"]
-    global SPEED
+    options = ["Casual", "Balanced", "Extreme", "Back"]
+    global SPEED, CURRENT_DIFFICULTY
     while difficulty_menu:
         draw_background()
         title_text = title_font.render("Select Difficulty", True, DARK_BLUE)
@@ -273,13 +292,16 @@ def changeDifficulty():
                 elif event.key in [pygame.K_RETURN, pygame.K_SPACE]:
                     fade_out()
                     if selected_option == 0:
-                        SPEED = 10
+                        SPEED = 5
+                        CURRENT_DIFFICULTY = "Casual"
                         difficulty_menu = False
                     elif selected_option == 1:
-                        SPEED = 15
+                        SPEED = 10
+                        CURRENT_DIFFICULTY = "Balanced"
                         difficulty_menu = False
                     elif selected_option == 2:
                         SPEED = 20
+                        CURRENT_DIFFICULTY = "Extreme"
                         difficulty_menu = False
                     elif selected_option == 3:
                         difficulty_menu = False
@@ -294,19 +316,41 @@ def changeDifficulty():
                     option_y = HEIGHT // 3 + i * 50
                     if option_x <= mouse_pos[0] <= option_x + option_width and option_y <= mouse_pos[1] <= option_y + option_height:
                         fade_out()
-                        if option == "Easy":
+                        if option == "Casual":
+                            SPEED = 5
+                            CURRENT_DIFFICULTY = "Casual"
+                            difficulty_menu = False
+                        elif option == "Balanced":
                             SPEED = 10
+                            CURRENT_DIFFICULTY = "Balanced"
                             difficulty_menu = False
-                        elif option == "Normal":
-                            SPEED = 15
-                            difficulty_menu = False
-                        elif option == "Hard":
+                        elif option == "Extreme":
                             SPEED = 20
-                            difficulty_menu = FalseF
+                            CURRENT_DIFFICULTY = "Extreme"
+                            difficulty_menu = False
                         elif option == "Back":
                             difficulty_menu = False
                             gameMenu()
                         fade_in()
+
+def update_speed(score, CURRENT_DIFFICULTY, initial_speed, last_updated_score):
+    if CURRENT_DIFFICULTY == "Casual":
+        speed_increment = 0.05
+        threshold = 50
+    elif CURRENT_DIFFICULTY == "Balanced":
+        speed_increment = 0.1
+        threshold = 30
+    elif CURRENT_DIFFICULTY == "Hardcore":
+        speed_increment = 0.2
+        threshold = 20
+    else:
+        speed_increment = 0.05
+        threshold = 50
+    if score - last_updated_score >= threshold:
+        last_updated_score = score
+        return initial_speed + (score // threshold) * speed_increment, last_updated_score
+    return initial_speed + (last_updated_score // threshold) * speed_increment, last_updated_score
+
 
 def changeResolution():
     global WIDTH, HEIGHT, screen
@@ -389,7 +433,7 @@ def pauseMenu(score, record):
     options = ["Resume", "Restart", "Main Menu"]
     while paused:
         draw_background()
-        draw_score_bar(score, record)
+        draw_score_bar(score, record, CURRENT_DIFFICULTY)
         pause_text = title_font.render("Paused", True, RED)
         draw_text_with_outline("Pause", title_font, GREEN, BLACK, 
                            (WIDTH - title_font.render("Pause", True, GREEN).get_width()) // 2, HEIGHT // 5)
@@ -511,7 +555,7 @@ def gameOverMenu(score, record):
     return True
 
 def gameLoop():
-    global RECORD
+    global RECORD, CURRENT_DIFFICULTY, SPEED, last_updated_score
     game_over = False
     game_close = False
     x1 = WIDTH / 2
@@ -525,6 +569,16 @@ def gameLoop():
     special_food_timer = 0
     special_foodx, special_foody = None, None
     score = 0
+    last_updated_score = 0
+    if CURRENT_DIFFICULTY == "Casual":
+        initial_speed = 5 
+    elif CURRENT_DIFFICULTY == "Balanced":
+        initial_speed = 10 
+    elif CURRENT_DIFFICULTY == "Hardcore":
+        initial_speed = 20
+    else:
+        initial_speed = 5  
+    SPEED = initial_speed
     while not game_over:
         while game_close:
             game_over = not gameOverMenu(score, RECORD)
@@ -558,6 +612,7 @@ def gameLoop():
                         y1_change = BLOCK_SIZE
                         x1_change = 0
                         direction = "DOWN"
+        SPEED = update_speed(score, CURRENT_DIFFICULTY, SPEED, last_updated_score)
         x1 += x1_change
         y1 += y1_change
         if x1 < 0:
@@ -593,7 +648,8 @@ def gameLoop():
             if block == snake_Head:
                 game_close = True
         our_snake(BLOCK_SIZE, snake_List)
-        draw_score_bar(score, RECORD)
+        SPEED, last_updated_score = update_speed(score, CURRENT_DIFFICULTY, initial_speed, last_updated_score)
+        draw_score_bar(score, RECORD, CURRENT_DIFFICULTY)
         if x1 == foodx and y1 == foody:
             foodx, foody = generate_food(snake_List)
             Length_of_snake += 1
@@ -606,7 +662,6 @@ def gameLoop():
         if score > RECORD:
             RECORD = score
             write_record(RECORD)
-        draw_score_bar(score, RECORD)
         pygame.display.update()
         clock.tick(SPEED)
     pygame.quit()

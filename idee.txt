@@ -3,3 +3,8 @@
 -cornici e decorazioni
 -icone e immagini
 -aggiungere audio
+-in ogni schermata cliccando f11 metto a schermo intero
+-in un meno la voce impostata va identificata tramite un puntino al lato
+-implementare top 10 record
+-implementare timer 
+-aggiungere timer ai record
