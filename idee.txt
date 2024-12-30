@@ -1,0 +1,9 @@
+-centrare la schermata gameover
+-effetti visivi alle opzioni selezionate
+-ombre per il testo
+-transizioni fluide tra le schermate
+-effetti di movimento
+-cornici e decorazioni
+-icone e immagini
+-scegliere una palette
+-aggiungere audio
