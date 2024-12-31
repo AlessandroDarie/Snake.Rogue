@@ -2,6 +2,7 @@ import pygame
 import time
 import random
 import os
+import json
 
 pygame.init()
 
@@ -37,6 +38,17 @@ def draw_background():
         )
         pygame.draw.line(screen, color, (0, y), (WIDTH, y))
 
+def draw_title_with_border(title_text, font, x_pos, y_pos, text_color, border_color, bg_color):
+    title_width = font.render(title_text, True, text_color).get_width()
+    title_height = font.render(title_text, True, text_color).get_height()
+    pygame.draw.rect(screen, border_color, 
+                     [x_pos - 8, y_pos - 8, title_width + 16, title_height + 16], 
+                     border_radius=20)
+    pygame.draw.rect(screen, bg_color, 
+                     [x_pos - 5, y_pos - 5, title_width + 10, title_height + 10], 
+                     border_radius=15)
+    screen.blit(font.render(title_text, True, text_color), (x_pos, y_pos))
+
 def draw_text_with_outline(text, font, color, outline_color, x, y):
     text_surface = font.render(text, True, color)
     outline_surfaces = [font.render(text, True, outline_color) for _ in range(8)]
@@ -45,16 +57,26 @@ def draw_text_with_outline(text, font, color, outline_color, x, y):
         screen.blit(outline_surface, (x + offset[0], y + offset[1]))
     screen.blit(text_surface, (x, y))
 
-def draw_score_bar(score, record, CURRENT_DIFFICULTY):
+def draw_score_bar(score, records, CURRENT_DIFFICULTY):
     bar_height = 60
     pygame.draw.rect(screen, (50, 50, 50), [0, 0, WIDTH, bar_height])
+    
+    # Mostra il punteggio corrente
     draw_text_with_outline(f"Score: {score}", font_style, (255, 255, 255), (0, 0, 0), 15, 15)
-    record_x = WIDTH - font_style.size(f"Record: {record}")[0] - 15
-    draw_text_with_outline(f"Record: {record}", font_style, (255, 255, 255), (0, 0, 0), record_x, 15)
+    
+    # Ottieni il record per la modalità corrente
+    top_record = max(records.get(CURRENT_DIFFICULTY, [0]), default=0)
+    
+    # Mostra il record per la modalità corrente
+    record_x = WIDTH - font_style.size(f"Record: {top_record}")[0] - 15
+    draw_text_with_outline(f"Record: {top_record}", font_style, (255, 255, 255), (0, 0, 0), record_x, 15)
+    
+    # Mostra la modalità corrente
     difficulty_label = "Mode:"
     label_x = (WIDTH - font_style.size(difficulty_label + " " + CURRENT_DIFFICULTY)[0]) // 2
     draw_text_with_outline(difficulty_label, font_style, (255, 255, 255), (0, 0, 0), label_x, 15)
-    if CURRENT_DIFFICULTY == "Casual":
+    
+    if CURRENT_DIFFICULTY == "Relaxed":
         difficulty_color = (0, 255, 0)
     elif CURRENT_DIFFICULTY == "Balanced":
         difficulty_color = (255, 255, 0) 
@@ -62,23 +84,40 @@ def draw_score_bar(score, record, CURRENT_DIFFICULTY):
         difficulty_color = (255, 0, 0)
     else:
         difficulty_color = (255, 255, 255) 
+    
     difficulty_x = label_x + font_style.size(difficulty_label)[0] + 5
     draw_text_with_outline(CURRENT_DIFFICULTY, font_style, difficulty_color, (0, 0, 0), difficulty_x, 15)
+    
+    # Mostra la velocità
     speed_text = f"Speed: {SPEED:.2f}"
     speed_x = 20
     speed_y = 40
     draw_text_with_outline(speed_text, font_style_small, (255, 255, 255), (0, 0, 0), speed_x, speed_y)
 
-def read_record():
+def read_records():
     try:
         with open("record.txt", "r") as file:
-            return int(file.read())
+            records = json.load(file)
+            return records
     except FileNotFoundError:
-        return 0
+        return {
+            "Relaxed": [],
+            "Balanced": [],
+            "Extreme": []
+        }
 
-def write_record(record):
+def write_records(records):
     with open("record.txt", "w") as file:
-        file.write(str(record))
+        json.dump(records, file)
+
+def update_records(records, mode, score):
+    if mode not in records:
+        records[mode] = []
+    records[mode].append(score)
+    records[mode] = sorted(records[mode], reverse=True)
+    records[mode] = records[mode][:3]
+    
+    return records
 
 def our_snake(block_size, snake_list):
     for i, x in enumerate(snake_list):
@@ -113,11 +152,10 @@ def gameMenu():
     options = ["Play", "High Score", "Mode", "Resolution", "Quit"]
     while menu:
         draw_background()
-        title_text = title_font.render("Snake Game", True, GREEN)
-        title_width = title_text.get_width()
-        title_x = (WIDTH - title_font.render("Snake Game", True, GREEN).get_width()) // 2
+        title_text = "Snake Game"
+        title_x = (WIDTH - title_font.render(title_text, True, GREEN).get_width()) // 2
         title_y = HEIGHT // 5
-        draw_text_with_outline("Snake Game", title_font, GREEN, BLACK, title_x, title_y)
+        draw_title_with_border(title_text, title_font, title_x, title_y, WHITE, BLACK, DARK_GREY)
         for i, option in enumerate(options):
             color = WHITE if i != selected_option else BLACK
             option_text = font_style.render(option, True, color)
@@ -184,19 +222,44 @@ def showHighScore():
     high_score_menu = True
     selected_option = 0
     options = ["Back"]
+    records = read_records()
     while high_score_menu:
         draw_background()
-        title_text = title_font.render("High Score", True, ORANGE)
-        draw_text_with_outline("High Scores", title_font, GREEN, BLACK, 
-                           (WIDTH - title_font.render("High Scores", True, GREEN).get_width()) // 2, HEIGHT // 5)
-        record_text = font_style.render(f"Current Record: {RECORD}", True, WHITE)
-        draw_text_with_outline(f"Current Record: {RECORD}", font_style, DARK_GREY, WHITE, 
-                           (WIDTH - record_text.get_width()) // 2, HEIGHT // 3)
+        title_text = "High Score"
+        title_x = (WIDTH - title_font.render(title_text, True, GREEN).get_width()) // 2
+        title_y = HEIGHT // 5
+        draw_title_with_border(title_text, title_font, title_x, title_y, WHITE, BLACK, DARK_GREY)
+        column_width = WIDTH // 4
+        start_x = (WIDTH - (3 * column_width)) // 2
+        y_start = HEIGHT // 3
+        record_color = (255, 255, 255)
+        large_font_style = pygame.font.SysFont('Arial', 40)
+        large_font_style_small = pygame.font.SysFont('Arial', 30) 
+        for idx, (mode, scores) in enumerate(records.items()):
+            column_x = start_x + idx * column_width
+            mode_title_text = f"{mode}"
+            draw_title_with_border(
+                mode_title_text, 
+                large_font_style, 
+                column_x + (column_width - large_font_style.size(mode_title_text)[0]) // 2, 
+                y_start+10, 
+                BLACK, 
+                BLACK, 
+                WHITE
+            )
+            y_offset = y_start + 75 
+            top_scores = scores[:3] if scores else ["No Records"]
+            for i, score in enumerate(top_scores):
+                record_text = f"{i + 1}. {score}"
+                draw_text_with_outline(record_text, large_font_style_small, record_color, BLACK, 
+                                       column_x + (column_width - large_font_style_small.size(record_text)[0]) // 2, y_offset)
+                y_offset += 40
+            
         for i, option in enumerate(options):
             color = WHITE if i != selected_option else BLACK
             option_text = font_style.render(option, True, color)
             option_x = WIDTH // 2 - option_text.get_width() // 2
-            option_y = HEIGHT // 2 + i * 50
+            option_y = HEIGHT - 80 + i * 50
             if i == selected_option:
                 border_color = BLACK
                 bg_color = WHITE
@@ -230,13 +293,14 @@ def showHighScore():
 def changeDifficulty():
     difficulty_menu = True
     selected_option = 0
-    options = ["Casual", "Balanced", "Extreme", "Back"]
+    options = ["Relaxed", "Balanced", "Extreme", "Back"]
     global SPEED, CURRENT_DIFFICULTY
     while difficulty_menu:
         draw_background()
-        title_text = title_font.render("Select Difficulty", True, DARK_BLUE)
-        draw_text_with_outline("Difficulty", title_font, GREEN, BLACK, 
-                           (WIDTH - title_font.render("Difficulty", True, GREEN).get_width()) // 2, HEIGHT // 5)
+        title_text = "Change Mode"
+        title_x = (WIDTH - title_font.render(title_text, True, GREEN).get_width()) // 2
+        title_y = HEIGHT // 5
+        draw_title_with_border(title_text, title_font, title_x, title_y, WHITE, BLACK, DARK_GREY)
         for i, option in enumerate(options):
             color = WHITE if i != selected_option else BLACK
             option_text = font_style.render(option, True, color)
@@ -256,7 +320,7 @@ def changeDifficulty():
                                  [option_x - 5, option_y - 5, option_text.get_width() + 10, option_text.get_height() + 10],
                                  border_radius=15)
             screen.blit(option_text, (option_x, option_y))
-        if CURRENT_DIFFICULTY == "Casual":
+        if CURRENT_DIFFICULTY == "Relaxed":
             indicator_option = 0
         elif CURRENT_DIFFICULTY == "Balanced":
             indicator_option = 1
@@ -287,11 +351,11 @@ def changeDifficulty():
                 elif event.key in [pygame.K_RETURN, pygame.K_SPACE]:
 
                     if selected_option == 0:
-                        SPEED = 5
-                        CURRENT_DIFFICULTY = "Casual"
+                        SPEED = 8
+                        CURRENT_DIFFICULTY = "Relaxed"
                         difficulty_menu = False
                     elif selected_option == 1:
-                        SPEED = 10
+                        SPEED = 13
                         CURRENT_DIFFICULTY = "Balanced"
                         difficulty_menu = False
                     elif selected_option == 2:
@@ -309,12 +373,12 @@ def changeDifficulty():
                     option_x = WIDTH // 2 - option_width // 2
                     option_y = HEIGHT // 3 + i * 50
                     if option_x <= mouse_pos[0] <= option_x + option_width and option_y <= mouse_pos[1] <= option_y + option_height:
-                        if option == "Casual":
-                            SPEED = 5
-                            CURRENT_DIFFICULTY = "Casual"
+                        if option == "Relaxed":
+                            SPEED = 8
+                            CURRENT_DIFFICULTY = "Relaxed"
                             difficulty_menu = False
                         elif option == "Balanced":
-                            SPEED = 10
+                            SPEED = 13
                             CURRENT_DIFFICULTY = "Balanced"
                             difficulty_menu = False
                         elif option == "Extreme":
@@ -326,18 +390,18 @@ def changeDifficulty():
                             gameMenu()
 
 def update_speed(score, CURRENT_DIFFICULTY, initial_speed, last_updated_score):
-    if CURRENT_DIFFICULTY == "Casual":
-        speed_increment = 0.05
-        threshold = 50
+    if CURRENT_DIFFICULTY == "Relaxed":
+        speed_increment = 0.5
+        threshold = 10
     elif CURRENT_DIFFICULTY == "Balanced":
-        speed_increment = 0.1
-        threshold = 30
+        speed_increment = 0.5
+        threshold = 5
     elif CURRENT_DIFFICULTY == "Extreme":
-        speed_increment = 0.2
-        threshold = 20
+        speed_increment = 1
+        threshold = 5
     else:
         speed_increment = 0.05
-        threshold = 50
+        threshold = 10
     if score - last_updated_score >= threshold:
         last_updated_score = score
         return initial_speed + (score // threshold) * speed_increment, last_updated_score
@@ -358,10 +422,10 @@ def changeResolution():
     is_fullscreen = False
     while True:
         draw_background()
-        title_text = title_font.render("Select Resolution", True, GREEN)
-        title_x = (WIDTH - title_text.get_width()) // 2
+        title_text = "Change Resolution"
+        title_x = (WIDTH - title_font.render(title_text, True, GREEN).get_width()) // 2
         title_y = HEIGHT // 5
-        draw_text_with_outline("Select Resolution", title_font, GREEN, BLACK, title_x, title_y)
+        draw_title_with_border(title_text, title_font, title_x, title_y, WHITE, BLACK, DARK_GREY)
         current_resolution = (WIDTH, HEIGHT)
         if is_fullscreen:
             current_index = 4
@@ -418,9 +482,9 @@ def changeResolution():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 for i, option in enumerate(options):
-                    option_x = WIDTH // 2 - option_text.get_width() // 2
+                    option_x = WIDTH // 2 - rendered_option.get_width() // 2
                     option_y = HEIGHT // 3 + i * 50
-                    if option_x <= mouse_pos[0] <= option_x + option_text.get_width() and option_y <= mouse_pos[1] <= option_y + option_text.get_height():
+                    if option_x <= mouse_pos[0] <= option_x + rendered_option.get_width() and option_y <= mouse_pos[1] <= option_y + rendered_option.get_height():
                         if i == 5: 
                             return
                         elif i == 4:                
@@ -439,9 +503,10 @@ def pauseMenu(score, record):
     while paused:
         draw_background()
         draw_score_bar(score, record, CURRENT_DIFFICULTY)
-        pause_text = title_font.render("Paused", True, RED)
-        draw_text_with_outline("Pause", title_font, GREEN, BLACK, 
-                           (WIDTH - title_font.render("Pause", True, GREEN).get_width()) // 2, HEIGHT // 5)
+        title_text = "Pause Menu"
+        title_x = (WIDTH - title_font.render(title_text, True, GREEN).get_width()) // 2
+        title_y = HEIGHT // 5
+        draw_title_with_border(title_text, title_font, title_x, title_y, WHITE, BLACK, DARK_GREY)
         for i, option in enumerate(options):
             color = WHITE if i != selected_option else BLACK
             option_text = font_style.render(option, True, color)
@@ -498,10 +563,14 @@ def gameOverMenu(score, record):
     selected_option = 0
     options = ["Play Again", "Main Menu"]
     score_font = pygame.font.SysFont("bahnschrift", 30)
+    records = read_records()
+    record = max(records[CURRENT_DIFFICULTY], default=0)
     while game_close:
         draw_background()
-        draw_text_with_outline("Game Over", title_font, RED, BLACK, 
-                           (WIDTH - title_font.render("Game Over", True, GREEN).get_width()) // 2, HEIGHT // 5)
+        title_text = "Game Over"
+        title_x = (WIDTH - title_font.render(title_text, True, GREEN).get_width()) // 2
+        title_y = HEIGHT // 5
+        draw_title_with_border(title_text, title_font, title_x, title_y, WHITE, BLACK, DARK_GREY)
         score_text = f"Your Score: {score}"
         score_width = score_font.render(score_text, True, GREEN).get_width()
         draw_text_with_outline(score_text, score_font, DARK_GREY, WHITE, 
@@ -569,10 +638,12 @@ def gameLoop():
     special_foodx, special_foody = None, None
     score = 0
     last_updated_score = 0
-    if CURRENT_DIFFICULTY == "Casual":
-        initial_speed = 5 
+    records = read_records()
+    
+    if CURRENT_DIFFICULTY == "Relaxed":
+        initial_speed = 8 
     elif CURRENT_DIFFICULTY == "Balanced":
-        initial_speed = 10 
+        initial_speed = 13 
     elif CURRENT_DIFFICULTY == "Extreme":
         initial_speed = 20
     else:
@@ -656,12 +727,12 @@ def gameLoop():
             special_food_timer = 0
             Length_of_snake += 5
             score += 5
-        if score > RECORD:
-            RECORD = score
-            write_record(RECORD)
+        if score > max(records[CURRENT_DIFFICULTY], default=0):
+            records = update_records(records, CURRENT_DIFFICULTY, score)
+        write_records(records)
         pygame.display.update()
         clock.tick(SPEED)
     pygame.quit()
     quit()
-RECORD = read_record()
+RECORD = read_records()
 gameMenu()
