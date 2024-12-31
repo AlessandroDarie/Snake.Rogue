@@ -30,24 +30,6 @@ font_style_small = pygame.font.SysFont('Arial', 15)
 title_font = pygame.font.SysFont("bahnschrift", 55)
 CURRENT_DIFFICULTY = "Balanced"
 
-def fade_out(duration=100):
-    fade_surface = pygame.Surface((WIDTH, HEIGHT))
-    fade_surface.fill(DARK_GREY)
-    for alpha in range(0, 255, int(255 / (duration / 10))):
-        fade_surface.set_alpha(alpha)
-        screen.blit(fade_surface, (0, 0))
-        pygame.display.update()
-        pygame.time.delay(10)
-
-def fade_in(duration=100):
-    fade_surface = pygame.Surface((WIDTH, HEIGHT))
-    fade_surface.fill(DARK_GREY)
-    for alpha in range(255, 0, -int(255 / (duration / 10))):
-        fade_surface.set_alpha(alpha)
-        screen.blit(fade_surface, (0, 0))
-        pygame.display.update()
-        pygame.time.delay(10)
-
 def draw_background():
     for y in range(HEIGHT):
         color = tuple(
@@ -168,7 +150,6 @@ def gameMenu():
                 elif event.key in [pygame.K_DOWN, pygame.K_s]:
                     selected_option = (selected_option + 1) % len(options)
                 elif event.key in [pygame.K_RETURN, pygame.K_SPACE]:
-                    fade_out()  
                     if selected_option == 0:
                         menu = False
                         gameLoop()
@@ -181,7 +162,7 @@ def gameMenu():
                     elif selected_option == 4:
                         pygame.quit()
                         quit()
-                    fade_in()
+
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 for i, option in enumerate(options):
@@ -233,10 +214,8 @@ def showHighScore():
                 elif event.key in [pygame.K_DOWN, pygame.K_s]: 
                     selected_option = (selected_option + 1) % len(options)
                 elif event.key in [pygame.K_RETURN, pygame.K_SPACE]: 
-                    fade_out()
                     if selected_option == 0: 
                         high_score_menu = False
-                    fade_in()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 for i, option in enumerate(options):
@@ -245,10 +224,8 @@ def showHighScore():
                     option_width = font_style.size(option)[0]
                     option_height = font_style.size(option)[1]
                     if option_x <= mouse_pos[0] <= option_x + option_width and option_y <= mouse_pos[1] <= option_y + option_height:
-                        fade_out()
                         if option == "Back":
                             high_score_menu = False
-                        fade_in()
 
 def changeDifficulty():
     difficulty_menu = True
@@ -279,6 +256,24 @@ def changeDifficulty():
                                  [option_x - 5, option_y - 5, option_text.get_width() + 10, option_text.get_height() + 10],
                                  border_radius=15)
             screen.blit(option_text, (option_x, option_y))
+        if CURRENT_DIFFICULTY == "Casual":
+            indicator_option = 0
+        elif CURRENT_DIFFICULTY == "Balanced":
+            indicator_option = 1
+        elif CURRENT_DIFFICULTY == "Extreme":
+            indicator_option = 2
+        else:
+            indicator_option = None
+        if indicator_option is not None:
+            option_text = font_style.render(options[indicator_option], True, WHITE)
+            option_x = WIDTH // 2 - option_text.get_width() // 2
+            option_y = HEIGHT // 3 + indicator_option * 50
+            indicator_radius = 6
+            indicator_x = option_x - 30
+            indicator_y = option_y + option_text.get_height() // 2 
+            pygame.draw.circle(screen, BLACK, (indicator_x, indicator_y), indicator_radius + 3)
+            pygame.draw.circle(screen, GREEN, (indicator_x, indicator_y), indicator_radius)
+
         pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -290,7 +285,7 @@ def changeDifficulty():
                 elif event.key in [pygame.K_DOWN, pygame.K_s]:
                     selected_option = (selected_option + 1) % len(options)
                 elif event.key in [pygame.K_RETURN, pygame.K_SPACE]:
-                    fade_out()
+
                     if selected_option == 0:
                         SPEED = 5
                         CURRENT_DIFFICULTY = "Casual"
@@ -306,7 +301,6 @@ def changeDifficulty():
                     elif selected_option == 3:
                         difficulty_menu = False
                         gameMenu()
-                    fade_in() 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 for i, option in enumerate(options):
@@ -315,7 +309,6 @@ def changeDifficulty():
                     option_x = WIDTH // 2 - option_width // 2
                     option_y = HEIGHT // 3 + i * 50
                     if option_x <= mouse_pos[0] <= option_x + option_width and option_y <= mouse_pos[1] <= option_y + option_height:
-                        fade_out()
                         if option == "Casual":
                             SPEED = 5
                             CURRENT_DIFFICULTY = "Casual"
@@ -331,7 +324,6 @@ def changeDifficulty():
                         elif option == "Back":
                             difficulty_menu = False
                             gameMenu()
-                        fade_in()
 
 def update_speed(score, CURRENT_DIFFICULTY, initial_speed, last_updated_score):
     if CURRENT_DIFFICULTY == "Casual":
@@ -340,7 +332,7 @@ def update_speed(score, CURRENT_DIFFICULTY, initial_speed, last_updated_score):
     elif CURRENT_DIFFICULTY == "Balanced":
         speed_increment = 0.1
         threshold = 30
-    elif CURRENT_DIFFICULTY == "Hardcore":
+    elif CURRENT_DIFFICULTY == "Extreme":
         speed_increment = 0.2
         threshold = 20
     else:
@@ -363,31 +355,43 @@ def changeResolution():
     ]
     options = ["800 x 600", "1024 x 768", "1280 x 720", "1920 x 1080", "Fullscreen", "Back"]
     selected_option = 0 
+    is_fullscreen = False
     while True:
         draw_background()
         title_text = title_font.render("Select Resolution", True, GREEN)
         title_x = (WIDTH - title_text.get_width()) // 2
         title_y = HEIGHT // 5
         draw_text_with_outline("Select Resolution", title_font, GREEN, BLACK, title_x, title_y)
+        current_resolution = (WIDTH, HEIGHT)
+        if is_fullscreen:
+            current_index = 4
+        elif current_resolution == (1920, 1080):
+            current_index = 3  
+        else:
+            current_index = resolutions.index(current_resolution) if current_resolution in resolutions else 4
         for i, option in enumerate(options):
-            color = WHITE if i != selected_option else BLACK 
-            option_text = font_style.render(option, True, color)
-            option_x = WIDTH // 2 - option_text.get_width() // 2
+            is_selected = i == selected_option
+            text_color = BLACK if is_selected else WHITE
+            rendered_option = font_style.render(option, True, text_color)
+            option_x = WIDTH // 2 - rendered_option.get_width() // 2
             option_y = HEIGHT // 3 + i * 50
             for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2), (-2, -2), (-2, 2), (2, -2), (2, 2)]:
                 outline_text = font_style.render(option, True, BLACK)
                 screen.blit(outline_text, (option_x + dx, option_y + dy))
-            screen.blit(option_text, (option_x, option_y))
-            if i == selected_option:
-                border_color = BLACK
-                bg_color = WHITE
-                pygame.draw.rect(screen, border_color, 
-                                 [option_x - 8, option_y - 8, option_text.get_width() + 16, option_text.get_height() + 16],
+            if is_selected:
+                pygame.draw.rect(screen, BLACK,
+                                 [option_x - 8, option_y - 8, rendered_option.get_width() + 16, rendered_option.get_height() + 16],
                                  border_radius=15)
-                pygame.draw.rect(screen, bg_color, 
-                                 [option_x - 5, option_y - 5, option_text.get_width() + 10, option_text.get_height() + 10],
+                pygame.draw.rect(screen, WHITE,
+                                 [option_x - 5, option_y - 5, rendered_option.get_width() + 10, rendered_option.get_height() + 10],
                                  border_radius=15)
-            screen.blit(option_text, (option_x, option_y))
+            if i == current_index:
+                indicator_radius = 6
+                indicator_x = option_x - 30
+                indicator_y = option_y + rendered_option.get_height() // 2
+                pygame.draw.circle(screen, BLACK, (indicator_x, indicator_y), indicator_radius + 3)
+                pygame.draw.circle(screen, GREEN, (indicator_x, indicator_y), indicator_radius)
+            screen.blit(rendered_option, (option_x, option_y))
         pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -403,13 +407,12 @@ def changeResolution():
                         return
                     elif selected_option == 4:
                         screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-                        WIDTH, HEIGHT = screen.get_size()  
+                        WIDTH, HEIGHT = screen.get_size()
+                        is_fullscreen = True  
                     else:
-                        if resolutions[selected_option] == 'fullscreen':
-                            pass
-                        else:
-                            WIDTH, HEIGHT = resolutions[selected_option]  
-                            screen = pygame.display.set_mode((WIDTH, HEIGHT))
+                        is_fullscreen = False
+                        WIDTH, HEIGHT = resolutions[selected_option]  
+                        screen = pygame.display.set_mode((WIDTH, HEIGHT))
                 elif event.key == pygame.K_ESCAPE:
                     return 
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -422,10 +425,12 @@ def changeResolution():
                             return
                         elif i == 4:                
                             screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-                            WIDTH, HEIGHT = screen.get_size() 
+                            WIDTH, HEIGHT = screen.get_size()
+                            is_fullscreen = True 
                         else:
                             WIDTH, HEIGHT = resolutions[i] 
                             screen = pygame.display.set_mode((WIDTH, HEIGHT))
+                            is_fullscreen = False
 
 def pauseMenu(score, record):
     paused = True
@@ -466,14 +471,12 @@ def pauseMenu(score, record):
                 elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
                     selected_option = (selected_option + 1) % len(options)
                 elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
-                    fade_out()
                     if selected_option == 0: 
                         paused = False
                     elif selected_option == 1:  
                         gameLoop()
                     elif selected_option == 2: 
                         gameMenu()
-                    fade_in()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 for i, option in enumerate(options):
@@ -482,14 +485,12 @@ def pauseMenu(score, record):
                     option_x = WIDTH // 2 - option_width // 2
                     option_y = HEIGHT // 3 + i * 60
                     if option_x <= mouse_pos[0] <= option_x + option_width and option_y <= mouse_pos[1] <= option_y + option_height:
-                        fade_out()
                         if option == "Resume":
                             paused = False
                         elif option == "Restart":
                             gameLoop()
                         elif option == "Main Menu":
                             gameMenu()
-                        fade_in()
     return True
 
 def gameOverMenu(score, record):
@@ -538,12 +539,10 @@ def gameOverMenu(score, record):
                 elif event.key == pygame.K_DOWN or event.key == pygame.K_s:  
                     selected_option = (selected_option + 1) % len(options)
                 elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE: 
-                    fade_out()
                     if selected_option == 0: 
                         gameLoop()
                     elif selected_option == 1: 
                         gameMenu()
-                    fade_in()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 for i, option in enumerate(options):
@@ -574,7 +573,7 @@ def gameLoop():
         initial_speed = 5 
     elif CURRENT_DIFFICULTY == "Balanced":
         initial_speed = 10 
-    elif CURRENT_DIFFICULTY == "Hardcore":
+    elif CURRENT_DIFFICULTY == "Extreme":
         initial_speed = 20
     else:
         initial_speed = 5  
@@ -589,9 +588,7 @@ def gameLoop():
                 game_over = True
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    fade_out()
                     pauseMenu(score, RECORD)
-                    fade_in()
                 elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
                     if direction != "RIGHT":
                         x1_change = -BLOCK_SIZE
