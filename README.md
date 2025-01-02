@@ -1,8 +1,8 @@
-# Snake Game
+# Snake.Rogue
 
 ## Overview
 
-This is a classic Snake game implemented using Python and Pygame. The player controls a snake that grows in length as it eats food, while avoiding collisions with itself and the walls. The game features multiple difficulty levels, a scoring system, and special effects that can be activated during gameplay.
+This is a Rogue version of the classic Snake game implemented using Python and Pygame. The player controls a snake that grows in length as it eats food, while avoiding collisions with itself and the walls. The game features multiple difficulty levels, a scoring system, and special effects that can be activated during gameplay.
 
 ## Features
 
