@@ -3,7 +3,8 @@ import time
 import random
 import os
 import json
-
+import math
+import uuid
 pygame.init()
 
 # Definizione dei colori utilizzati nel gioco
@@ -29,16 +30,19 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Snake Game")
 clock = pygame.time.Clock()
 
-# Dimensione del blocco e velocità iniziale
+# Variabili utili al gioco
 BLOCK_SIZE = 20
 SPEED = 10
 global_records = 0
+last_score = 0
+CURRENT_DIFFICULTY = "Balanced"
+Length_of_snake = 1
+current_game_id = None
 
 # Font utilizzati nel gioco
 font_style = pygame.font.SysFont("bahnschrift", 30)
 font_style_small = pygame.font.SysFont('Arial', 15)
 title_font = pygame.font.SysFont("bahnschrift", 55)
-CURRENT_DIFFICULTY = "Balanced"
 
 # Funzioni di disegno
 def draw_background():
@@ -60,7 +64,8 @@ def draw_text_with_options(text, font, x, y, text_color, outline_color=None, bg_
             screen.blit(outline_surface, (x + dx, y + dy))
     
     if bg_color:
-        pygame.draw.rect(screen, bg_color, [x - 5, y - 5, text_width + 10, text_height + 10], border_radius=border_radius)
+        pygame.draw.rect(screen, bg_color, [x - 15, y - 7.5, text_width + 30, text_height + 15], border_radius=border_radius)
+        pygame.draw.rect(screen, BLACK, [x - 15, y - 7.5, text_width + 30, text_height + 15], border_radius=border_radius, width=3)
     
     screen.blit(text_surface, (x, y))
 
@@ -74,7 +79,8 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
 
     title_x = (WIDTH - title_font.render(title, True, GREEN).get_width()) // 2
     title_y = HEIGHT // 5
-    draw_text_with_options(title, title_font, title_x, title_y, WHITE, BLACK, DARK_GREY)
+    border_radius_value = 100
+    draw_text_with_options(title, title_font, title_x, title_y, WHITE, BLACK, DARK_GREY, border_radius=border_radius_value)
 
     if title == "Change Resolution":
         current_resolution = (WIDTH, HEIGHT)
@@ -130,8 +136,8 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
             )
             y_offset = y_start + 75 
             top_scores = scores[:3] if scores else ["No Records"]
-            for i, score in enumerate(top_scores):
-                record_text = f"{i + 1}. {score}"
+            for i, score in enumerate(scores):
+                record_text = f"{i + 1}. {score['score']}"
                 draw_text_with_options(record_text, large_font_style_small, 
                                        column_x + (column_width - large_font_style_small.size(record_text)[0]) // 2, 
                                        y_offset, record_color, BLACK)
@@ -143,6 +149,11 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
         option_text = font_style.render(option, True, color)
         option_x = WIDTH // 2 - option_text.get_width() // 2
         option_y = HEIGHT // 3 + i * 50 + option_offset
+
+        for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2), (-2, -2), (-2, 2), (2, -2), (2, 2)]:
+            outline_text = font_style.render(option, True, BLACK)
+            screen.blit(outline_text, (option_x + dx, option_y + dy))
+        screen.blit(option_text, (option_x, option_y))
 
         if i == selected_option:
             border_color = BLACK
@@ -178,10 +189,10 @@ def draw_score_bar(score, high_score, current_difficulty):
     bar_height = 60
     pygame.draw.rect(screen, (50, 50, 50), [0, 0, WIDTH, bar_height])
     
-    draw_text_with_options(f"Score: {score}", font_style, 15, 15, (255, 255, 255), (0, 0, 0))
+    draw_text_with_options(f"Score: {score:.1f}", font_style, 15, 15, (255, 255, 255), (0, 0, 0))
     
-    record_x = WIDTH - font_style.size(f"Record: {high_score}")[0] - 15
-    draw_text_with_options(f"Record: {high_score}", font_style, record_x, 15, (255, 255, 255), (0, 0, 0))
+    record_x = WIDTH - font_style.size(f"Record: {high_score:.1f}")[0] - 15
+    draw_text_with_options(f"Record: {high_score:.1f}", font_style, record_x, 15, (255, 255, 255), (0, 0, 0))
 
     difficulty_label = "Mode:"
     label_x = (WIDTH - font_style.size(difficulty_label + " " + current_difficulty)[0]) // 2
@@ -227,7 +238,7 @@ def is_valid_food_position(x, y, snake_list):
             return False
     return True
 
-def update_speed(score, CURRENT_DIFFICULTY, initial_speed, last_updated_score):
+def update_speed(score, CURRENT_DIFFICULTY, current_speed, last_updated_score):
     """Aggiorna la velocità del gioco in base al punteggio e alla difficoltà corrente."""
     if CURRENT_DIFFICULTY == "Relaxed":
         speed_increment = 0.5
@@ -241,20 +252,66 @@ def update_speed(score, CURRENT_DIFFICULTY, initial_speed, last_updated_score):
     else:
         speed_increment = 0.05
         threshold = 10
-    if score - last_updated_score >= threshold:
+    if score // threshold > last_updated_score // threshold:
         last_updated_score = score
-        return initial_speed + (score // threshold) * speed_increment, last_updated_score
-    return initial_speed + (last_updated_score // threshold) * speed_increment, last_updated_score
+        return current_speed + speed_increment, last_updated_score
+    return current_speed, last_updated_score
 
-def update_records(records, mode, score):
-    """Aggiorna i record con il nuovo punteggio per la modalità specificata."""
-    if mode not in records:
-        records[mode] = []
-    records[mode].append(score)
-    records[mode] = sorted(records[mode], reverse=True)
-    records[mode] = records[mode][:3]
-    
-    return records
+def check_for_special_effect_activation(score):
+    """Controlla se attivare il menu degli effetti speciali in base al punteggio."""
+    global last_score
+    if score > last_score+5:
+        if CURRENT_DIFFICULTY == "Relaxed":
+            remainder = math.floor(score) % 15
+            if remainder in {0, 1, 2, 3, 4}:
+                last_score = score - remainder
+                show_special_effect_menu()
+        elif CURRENT_DIFFICULTY == "Balanced":
+            remainder = math.floor(score) % 30
+            if remainder in {0, 1, 2, 3, 4}:
+                last_score = score - remainder
+                show_special_effect_menu()
+        elif CURRENT_DIFFICULTY == "Extreme":
+            remainder = math.floor(score) % 60
+            if remainder in {0, 1, 2, 3, 4}:
+                last_score = score - remainder
+                show_special_effect_menu()
+
+# Funzioni per gli effetti speciali
+def decrease_speed():
+    """Diminuisce la velocità del gioco di 5."""
+    global SPEED
+    SPEED = max(1, SPEED - 5)  # Assicurati che la velocità non scenda sotto 1
+    print("Velocità diminuita di 5.")
+
+def increase_food_points():
+    """Il cibo normale fornisce il 15% di punti in più."""
+    global food_points_multiplier
+    food_points_multiplier += 0.20  # Moltiplicatore per il punteggio del cibo normale
+    print("Il cibo normale fornisce il 15% di punti in più.")
+
+def decrease_length():
+    """Diminuisce la lunghezza del serpente di 10 e aggiorna la lista del serpente visivamente."""
+    global Length_of_snake, snake_List  # Dichiarare Length_of_snake e snake_List come globali
+    Length_of_snake = max(1, Length_of_snake - 20)  # Assicurati che la lunghezza non scenda sotto 1
+    # Rimuovi gli ultimi segmenti dalla lista del serpente
+    while len(snake_List) > Length_of_snake:
+        snake_List.pop(0)  # Rimuove l'ultimo segmento
+    print("Lunghezza del serpente diminuita di 10.")
+
+def increase_special_food_points():
+    """Il cibo speciale fornisce il 50% di punti in più."""
+    global special_food_points_multiplier
+    special_food_points_multiplier += 0.5  # Moltiplicatore per il punteggio del cibo speciale
+    print("Il cibo speciale fornisce il 50% di punti in più.")
+
+# Definizione degli effetti speciali
+special_effects = [
+    ("Diminuisci la velocità di 5", decrease_speed),
+    ("Il cibo normale fornirà il 20% di punti in più", increase_food_points),
+    ("Diminuisci la lunghezza di 10", decrease_length),
+    ("Il cibo speciale fornirà il 50% di punti in più", increase_special_food_points),
+]
 
 # Funzioni di Gestione dei Record
 def read_records():
@@ -273,7 +330,24 @@ def read_records():
 def write_records(records):
     """Scrive i record nel file 'record.txt'."""
     with open("record.txt", "w") as file:
-        json.dump(records, file)
+        json.dump(records, file, indent=4)
+
+def update_records(records, mode, score, game_id):
+    """Aggiorna i record con il nuovo punteggio per la modalità specificata"""
+    if mode not in records:
+        records[mode] = []
+    
+    record_with_id = {"score": round(score, 1), "game_id": game_id}
+
+    filtered_records = [rec for rec in records[mode] if rec["game_id"] != game_id]
+
+    filtered_records.append(record_with_id)
+    
+    filtered_records = sorted(filtered_records, key=lambda x: x["score"], reverse=True)
+
+    records[mode] = filtered_records[:3]
+    
+    return records
 
 # Menu e Navigazione
 def handle_menu_input(options, selected_option, event):
@@ -416,6 +490,26 @@ def changeResolution():
                     WIDTH, HEIGHT = resolutions[selected_option]  
                     screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
+def show_special_effect_menu():
+    """Mostra il menu per scegliere un effetto speciale."""
+    selected_option = 0
+    options = random.sample(special_effects, 3)
+    option_texts = [opt[0] for opt in options]
+    while True:
+        draw_menu("Scegli un Effetto Speciale", option_texts, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None)
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            selected_option, confirmed = handle_menu_input([opt[0] for opt in options], selected_option, event)
+            if confirmed:
+                print(f"Effetto scelto: {options[selected_option][0]}")  # Debug
+                options[selected_option][1]()
+                return
+
 def pauseMenu(score, current_high_score):
     """Mostra il menu di pausa e gestisce la navigazione tra le opzioni."""
     paused = True
@@ -447,7 +541,7 @@ def gameOverMenu(score, mode_high_score):
     options = ["Play Again", "Main Menu"]
     score_font = pygame.font.SysFont("bahnschrift", 30)
     records = read_records()
-    mode_high_score = max(records[CURRENT_DIFFICULTY], default=0)
+    mode_high_score = max((rec["score"] for rec in records[CURRENT_DIFFICULTY]), default=0)
     while game_close:
         draw_menu("Game Over", options, selected_option, score, mode_high_score, resolutions=None, is_fullscreen=None, all_high_scores=None)
         pygame.display.update()
@@ -468,7 +562,8 @@ def gameOverMenu(score, mode_high_score):
 #Funzione Principale
 def gameLoop():
     """Gestisce il ciclo principale del gioco, inclusi movimento, collisioni e punteggio."""
-    global global_records, CURRENT_DIFFICULTY, SPEED, last_updated_score
+    global global_records, CURRENT_DIFFICULTY, SPEED, last_updated_score, last_score, Length_of_snake, food_points_multiplier, special_food_points_multiplier, current_game_id, snake_List
+    current_game_id = str(uuid.uuid4())
     game_over = False
     game_close = False
     x1 = WIDTH / 2
@@ -484,8 +579,10 @@ def gameLoop():
     score = 0
     last_updated_score = 0
     global_records = read_records()
-    mode_high_score = max(global_records[CURRENT_DIFFICULTY], default=0)
-    
+    mode_high_score = max((rec["score"] for rec in global_records[CURRENT_DIFFICULTY]), default=0)
+    last_score = 0
+    food_points_multiplier = 1.0
+    special_food_points_multiplier = 1.0
     if CURRENT_DIFFICULTY == "Relaxed":
         initial_speed = 8 
     elif CURRENT_DIFFICULTY == "Balanced":
@@ -497,7 +594,7 @@ def gameLoop():
     SPEED = initial_speed
     while not game_over:
         while game_close:
-            mode_high_score = max(global_records[CURRENT_DIFFICULTY], default=0)
+            mode_high_score = max((rec["score"] for rec in global_records[CURRENT_DIFFICULTY]), default=0)
             game_over = not gameOverMenu(score, mode_high_score)
             if not game_over:
                 break  
@@ -506,7 +603,7 @@ def gameLoop():
                 game_over = True
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    mode_high_score = max(global_records[CURRENT_DIFFICULTY], default=0)
+                    mode_high_score = max((rec["score"] for rec in global_records[CURRENT_DIFFICULTY]), default=0)
                     pauseMenu(score, mode_high_score)
                 elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
                     if direction != "RIGHT":
@@ -528,7 +625,6 @@ def gameLoop():
                         y1_change = BLOCK_SIZE
                         x1_change = 0
                         direction = "DOWN"
-        SPEED = update_speed(score, CURRENT_DIFFICULTY, SPEED, last_updated_score)
         x1 += x1_change
         y1 += y1_change
         if x1 < 0:
@@ -564,20 +660,23 @@ def gameLoop():
             if block == snake_Head:
                 game_close = True
         our_snake(BLOCK_SIZE, snake_List)
-        SPEED, last_updated_score = update_speed(score, CURRENT_DIFFICULTY, initial_speed, last_updated_score)
+        SPEED, last_updated_score = update_speed(score, CURRENT_DIFFICULTY, SPEED, last_updated_score)
         draw_score_bar(score, mode_high_score, CURRENT_DIFFICULTY)
         if x1 == foodx and y1 == foody:
             foodx, foody = generate_food(snake_List)
             Length_of_snake += 1
-            score += 1
+            score += 1 * food_points_multiplier
+            score = round(score, 1)
         if special_food_timer > 0 and x1 == special_foodx and y1 == special_foody:
             special_foodx, special_foody = None, None
             special_food_timer = 0
             Length_of_snake += 5
-            score += 5
-        if score > max(global_records[CURRENT_DIFFICULTY], default=0):
-            global_records = update_records(global_records, CURRENT_DIFFICULTY, score)
+            score += 5 * special_food_points_multiplier
+            score = round(score, 1)
+       
+        global_records = update_records(global_records, CURRENT_DIFFICULTY, score, current_game_id)
         write_records(global_records)
+        check_for_special_effect_activation(score)
         pygame.display.update()
         clock.tick(SPEED)
 

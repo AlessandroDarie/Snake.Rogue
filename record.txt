@@ -1,1 +1,44 @@
-{"Relaxed": [89, 84, 83], "Balanced": [65, 64, 59], "Extreme": [45, 40, 38]}
+{
+    "Relaxed": [
+        {
+            "score": 9,
+            "game_id": "game_1"
+        },
+        {
+            "score": 4,
+            "game_id": "game_2"
+        },
+        {
+            "score": 3,
+            "game_id": "game_3"
+        }
+    ],
+    "Balanced": [
+        {
+            "score": 113.0,
+            "game_id": "1fedd826-2ea0-461f-82f7-3422e8cf15fa"
+        },
+        {
+            "score": 60.4,
+            "game_id": "403b94c7-a47f-4e1a-8583-3b0d7e402282"
+        },
+        {
+            "score": 53.0,
+            "game_id": "9cd0dc5e-2296-4a05-adc6-ab72e934deef"
+        }
+    ],
+    "Extreme": [
+        {
+            "score": 5,
+            "game_id": "game_7"
+        },
+        {
+            "score": 4,
+            "game_id": "game_8"
+        },
+        {
+            "score": 3,
+            "game_id": "game_9"
+        }
+    ]
+}
