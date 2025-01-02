@@ -71,7 +71,8 @@ def draw_text_with_options(text, font, x, y, text_color, outline_color=None, bg_
 
 def draw_menu(title, options, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None):
     """Disegna un menu con il titolo e le opzioni fornite, evidenziando l'opzione selezionata."""
-    draw_background()
+    if title != "Choice a New Ability":
+        draw_background()
     option_offset = 0
 
     if title in ["Pause Menu", "Game Over"] and score is not None and high_score is not None:
@@ -148,8 +149,14 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
         color = WHITE if i != selected_option else BLACK
         option_text = font_style.render(option, True, color)
         option_x = WIDTH // 2 - option_text.get_width() // 2
+        if title == "Choice a New Ability":
+            option_offset = 50
         option_y = HEIGHT // 3 + i * 50 + option_offset
 
+        if title == "Choice a New Ability":
+            pygame.draw.rect(screen, BLACK, 
+                 [option_x - 8, option_y - 8, option_text.get_width() + 16, option_text.get_height() + 16], 
+                 border_radius=100)
         for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2), (-2, -2), (-2, 2), (2, -2), (2, 2)]:
             outline_text = font_style.render(option, True, BLACK)
             screen.blit(outline_text, (option_x + dx, option_y + dy))
@@ -257,7 +264,7 @@ def update_speed(score, CURRENT_DIFFICULTY, current_speed, last_updated_score):
         return current_speed + speed_increment, last_updated_score
     return current_speed, last_updated_score
 
-def check_for_special_effect_activation(score):
+def check_for_special_effect_activation(score,foodx,foody, mode_high_score):
     """Controlla se attivare il menu degli effetti speciali in base al punteggio."""
     global last_score
     if score > last_score+5:
@@ -265,17 +272,17 @@ def check_for_special_effect_activation(score):
             remainder = math.floor(score) % 15
             if remainder in {0, 1, 2, 3, 4}:
                 last_score = score - remainder
-                show_special_effect_menu()
+                show_special_effect_menu(score,foodx,foody, mode_high_score)
         elif CURRENT_DIFFICULTY == "Balanced":
             remainder = math.floor(score) % 30
             if remainder in {0, 1, 2, 3, 4}:
                 last_score = score - remainder
-                show_special_effect_menu()
+                show_special_effect_menu(score,foodx,foody, mode_high_score)
         elif CURRENT_DIFFICULTY == "Extreme":
             remainder = math.floor(score) % 60
             if remainder in {0, 1, 2, 3, 4}:
                 last_score = score - remainder
-                show_special_effect_menu()
+                show_special_effect_menu(score,foodx,foody, mode_high_score)
 
 # Funzioni per gli effetti speciali
 def decrease_speed():
@@ -490,13 +497,22 @@ def changeResolution():
                     WIDTH, HEIGHT = resolutions[selected_option]  
                     screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-def show_special_effect_menu():
+def show_special_effect_menu(score,foodx,foody,mode_high_score):
     """Mostra il menu per scegliere un effetto speciale."""
     selected_option = 0
     options = random.sample(special_effects, 3)
     option_texts = [opt[0] for opt in options]
+
+    # Disegna la situazione attuale
+    draw_background()
+    our_snake(BLOCK_SIZE, snake_List)  
+    pygame.draw.circle(screen, BLACK, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
+
+    # Disegna il punteggio attuale
+    draw_score_bar(score, mode_high_score, CURRENT_DIFFICULTY)
+
     while True:
-        draw_menu("Scegli un Effetto Speciale", option_texts, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None)
+        draw_menu("Choice a New Ability", option_texts, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None)
         pygame.display.update()
 
         for event in pygame.event.get():
@@ -506,7 +522,7 @@ def show_special_effect_menu():
 
             selected_option, confirmed = handle_menu_input([opt[0] for opt in options], selected_option, event)
             if confirmed:
-                print(f"Effetto scelto: {options[selected_option][0]}")  # Debug
+                print(f"Effetto scelto: {options[selected_option][0]}")
                 options[selected_option][1]()
                 return
 
@@ -676,7 +692,7 @@ def gameLoop():
        
         global_records = update_records(global_records, CURRENT_DIFFICULTY, score, current_game_id)
         write_records(global_records)
-        check_for_special_effect_activation(score)
+        check_for_special_effect_activation(score,foodx,foody,mode_high_score)
         pygame.display.update()
         clock.tick(SPEED)
 

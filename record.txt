@@ -19,12 +19,12 @@
             "game_id": "1fedd826-2ea0-461f-82f7-3422e8cf15fa"
         },
         {
-            "score": 60.4,
-            "game_id": "403b94c7-a47f-4e1a-8583-3b0d7e402282"
+            "score": 97.0,
+            "game_id": "b3b96967-1bab-47cd-8241-f19a92d73335"
         },
         {
-            "score": 53.0,
-            "game_id": "9cd0dc5e-2296-4a05-adc6-ab72e934deef"
+            "score": 83.0,
+            "game_id": "f9c77f70-bbcf-47ee-a7b4-f85f50e9fe35"
         }
     ],
     "Extreme": [
