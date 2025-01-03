@@ -2,7 +2,8 @@
 -cornici e decorazioni
 -icone e immagini
 -aggiungere audio
--rogue like
 -cibo speciale
 -bonus speciali
 -malus speciali
+-modalita' coop
+-modalita' 1 vs 1

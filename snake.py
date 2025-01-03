@@ -32,12 +32,15 @@ clock = pygame.time.Clock()
 
 # Variabili utili al gioco
 BLOCK_SIZE = 20
-SPEED = 10
+SPEED, SPEED1, SPEED2 = 10, 10, 10
 global_records = 0
 last_score = 0
 CURRENT_DIFFICULTY = "Balanced"
 Length_of_snake = 1
 current_game_id = None
+last_input_time = 0
+input_delay = 10
+game_mode = "single"
 
 # Font utilizzati nel gioco
 font_style = pygame.font.SysFont("bahnschrift", 30)
@@ -222,12 +225,22 @@ def draw_score_bar(score, high_score, current_difficulty):
     speed_y = 40
     draw_text_with_options(speed_text, font_style_small, speed_x, speed_y, (255, 255, 255), (0, 0, 0))
 
-def our_snake(block_size, snake_list):
+    length_text = f"Length: {Length_of_snake}"
+    length_x = speed_x + font_style_small.size(speed_text)[0] + 20
+    draw_text_with_options(length_text, font_style_small, length_x, speed_y, (255, 255, 255), (0, 0, 0))
+
+def our_snake(block_size, snake_list, player):
     """Disegna il serpente sullo schermo."""
-    for i, x in enumerate(snake_list):
-        color = (0, max(0, 255 - i * 5), 0)
-        pygame.draw.rect(screen, (0, 0, 0), [x[0] - 2, x[1] - 2, block_size + 4, block_size + 4], border_radius=5)
-        pygame.draw.rect(screen, color, [x[0], x[1], block_size, block_size], border_radius=5)
+    if player == 2:
+        for i, x in enumerate(snake_list):
+            color = ( max(0, 255 - i * 5), 0, 0)
+            pygame.draw.rect(screen, (0, 0, 0), [x[0] - 2, x[1] - 2, block_size + 4, block_size + 4], border_radius=5)
+            pygame.draw.rect(screen, color, [x[0], x[1], block_size, block_size], border_radius=5)
+    else:    
+        for i, x in enumerate(snake_list):
+            color = (0, max(0, 255 - i * 5), 0)
+            pygame.draw.rect(screen, (0, 0, 0), [x[0] - 2, x[1] - 2, block_size + 4, block_size + 4], border_radius=5)
+            pygame.draw.rect(screen, color, [x[0], x[1], block_size, block_size], border_radius=5)
 
 #Funzioni di Gioco
 def generate_food(snake_List):
@@ -264,25 +277,75 @@ def update_speed(score, CURRENT_DIFFICULTY, current_speed, last_updated_score):
         return current_speed + speed_increment, last_updated_score
     return current_speed, last_updated_score
 
-def check_for_special_effect_activation(score,foodx,foody, mode_high_score):
+def check_for_special_effect_activation(score,foodx,foody, player):
     """Controlla se attivare il menu degli effetti speciali in base al punteggio."""
-    global last_score
-    if score > last_score+5:
+    global last_score1, last_score2
+    if player == 1 and score > last_score1 + 5:
         if CURRENT_DIFFICULTY == "Relaxed":
             remainder = math.floor(score) % 15
             if remainder in {0, 1, 2, 3, 4}:
-                last_score = score - remainder
+                last_score1 = score - remainder
                 show_special_effect_menu(score,foodx,foody, mode_high_score)
         elif CURRENT_DIFFICULTY == "Balanced":
             remainder = math.floor(score) % 30
             if remainder in {0, 1, 2, 3, 4}:
-                last_score = score - remainder
+                last_score1 = score - remainder
                 show_special_effect_menu(score,foodx,foody, mode_high_score)
         elif CURRENT_DIFFICULTY == "Extreme":
             remainder = math.floor(score) % 60
             if remainder in {0, 1, 2, 3, 4}:
-                last_score = score - remainder
+                last_score1 = score - remainder
                 show_special_effect_menu(score,foodx,foody, mode_high_score)
+    if player == 2 and score > last_score2 + 5:
+        if CURRENT_DIFFICULTY == "Relaxed":
+            remainder = math.floor(score) % 15
+            if remainder in {0, 1, 2, 3, 4}:
+                last_score2 = score - remainder
+                show_special_effect_menu(score,foodx,foody, mode_high_score)
+        elif CURRENT_DIFFICULTY == "Balanced":
+            remainder = math.floor(score) % 30
+            if remainder in {0, 1, 2, 3, 4}:
+                last_score2 = score - remainder
+                show_special_effect_menu(score,foodx,foody, mode_high_score)
+        elif CURRENT_DIFFICULTY == "Extreme":
+            remainder = math.floor(score) % 60
+            if remainder in {0, 1, 2, 3, 4}:
+                last_score2 = score - remainder
+                show_special_effect_menu(score,foodx,foody, mode_high_score)
+
+def snake_input(event, direction, x1_change, y1_change,score, mode_high_score,player=None,game_mode=None):
+    """Gestisce l'input dell'utente per il movimento del serpente."""
+    global last_input_time
+    current_time = pygame.time.get_ticks()
+
+    if current_time - last_input_time < input_delay:
+        return direction, x1_change, y1_change
+
+    if event.type == pygame.KEYDOWN:
+        last_input_time = current_time
+        if event.key == pygame.K_LEFT or event.key == pygame.K_a:
+            if direction != "RIGHT":
+                x1_change = -BLOCK_SIZE
+                y1_change = 0
+                direction = "LEFT"
+        elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
+            if direction != "LEFT":
+                x1_change = BLOCK_SIZE
+                y1_change = 0
+                direction = "RIGHT"
+        elif event.key == pygame.K_UP or event.key == pygame.K_w:
+            if direction != "DOWN":
+                y1_change = -BLOCK_SIZE
+                x1_change = 0
+                direction = "UP"
+        elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
+            if direction != "UP":
+                y1_change = BLOCK_SIZE
+                x1_change = 0
+                direction = "DOWN"
+        elif event.key == pygame.K_ESCAPE:
+            pauseMenu(score, mode_high_score,game_mode)
+    return direction, x1_change, y1_change
 
 # Funzioni per gli effetti speciali
 def decrease_speed():
@@ -292,19 +355,19 @@ def decrease_speed():
     print("Velocità diminuita di 5.")
 
 def increase_food_points():
-    """Il cibo normale fornisce il 15% di punti in più."""
+    """Il cibo normale fornisce il 20% di punti in più."""
     global food_points_multiplier
     food_points_multiplier += 0.20  # Moltiplicatore per il punteggio del cibo normale
-    print("Il cibo normale fornisce il 15% di punti in più.")
+    print("Il cibo normale fornisce il 20% di punti in più.")
 
 def decrease_length():
-    """Diminuisce la lunghezza del serpente di 10 e aggiorna la lista del serpente visivamente."""
+    """Dimezza la lunghezza del serpente e aggiorna la lista del serpente visivamente."""
     global Length_of_snake, snake_List  # Dichiarare Length_of_snake e snake_List come globali
-    Length_of_snake = max(1, Length_of_snake - 20)  # Assicurati che la lunghezza non scenda sotto 1
+    Length_of_snake = max(1, math.ceil(Length_of_snake / 2))  # Assicurati che la lunghezza non scenda sotto 1
     # Rimuovi gli ultimi segmenti dalla lista del serpente
     while len(snake_List) > Length_of_snake:
         snake_List.pop(0)  # Rimuove l'ultimo segmento
-    print("Lunghezza del serpente diminuita di 10.")
+    print("Lunghezza del serpente dimezzata.")
 
 def increase_special_food_points():
     """Il cibo speciale fornisce il 50% di punti in più."""
@@ -316,7 +379,7 @@ def increase_special_food_points():
 special_effects = [
     ("Diminuisci la velocità di 5", decrease_speed),
     ("Il cibo normale fornirà il 20% di punti in più", increase_food_points),
-    ("Diminuisci la lunghezza di 10", decrease_length),
+    ("Dimezza la lunghezza del serpente", decrease_length),
     ("Il cibo speciale fornirà il 50% di punti in più", increase_special_food_points),
 ]
 
@@ -396,8 +459,7 @@ def gameMenu():
             selected_option, confirmed = handle_menu_input(options, selected_option, event)
             if confirmed:
                 if selected_option == 0:
-                    menu = False
-                    gameLoop()
+                    selectGameMode()
                 elif selected_option == 1:
                     showHighScore()
                 elif selected_option == 2:
@@ -407,6 +469,31 @@ def gameMenu():
                 elif selected_option == 4:
                     pygame.quit()
                     quit()
+
+def selectGameMode():
+    """Mostra il menu per selezionare la modalità di gioco."""
+    mode_menu = True
+    selected_option = 0
+    options = ["Single", "1vs1", "Back"]
+    while mode_menu:
+        draw_menu("Select Game Mode", options, selected_option)
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            selected_option, confirmed = handle_menu_input(options, selected_option, event)
+            if confirmed:
+                if selected_option == 0:
+                    menu = False
+                    gameLoop()  # Modalità singola
+                elif selected_option == 1:
+                    mode_menu = False
+                    gameLoop1vs1()  # Modalità 1 vs 1
+                elif selected_option == 2:
+                    mode_menu = False
 
 def showHighScore():
     """Mostra il menu dei punteggi più alti e gestisce la navigazione."""
@@ -497,7 +584,7 @@ def changeResolution():
                     WIDTH, HEIGHT = resolutions[selected_option]  
                     screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-def show_special_effect_menu(score,foodx,foody,mode_high_score):
+def show_special_effect_menu(score,foodx,foody,player):
     """Mostra il menu per scegliere un effetto speciale."""
     selected_option = 0
     options = random.sample(special_effects, 3)
@@ -505,7 +592,7 @@ def show_special_effect_menu(score,foodx,foody,mode_high_score):
 
     # Disegna la situazione attuale
     draw_background()
-    our_snake(BLOCK_SIZE, snake_List)  
+    our_snake(BLOCK_SIZE, snake_List,player=1)  
     pygame.draw.circle(screen, BLACK, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
 
     # Disegna il punteggio attuale
@@ -522,11 +609,11 @@ def show_special_effect_menu(score,foodx,foody,mode_high_score):
 
             selected_option, confirmed = handle_menu_input([opt[0] for opt in options], selected_option, event)
             if confirmed:
-                print(f"Effetto scelto: {options[selected_option][0]}")
+                print(f"Effetto scelto per il Giocatore {player}: {options[selected_option][0]}")
                 options[selected_option][1]()
                 return
 
-def pauseMenu(score, current_high_score):
+def pauseMenu(score, current_high_score,game_mode):
     """Mostra il menu di pausa e gestisce la navigazione tra le opzioni."""
     paused = True
     selected_option = 0
@@ -545,7 +632,10 @@ def pauseMenu(score, current_high_score):
                 if selected_option == 0:
                     paused = False
                 elif selected_option == 1:
-                    gameLoop()
+                    if game_mode == "single":
+                        gameLoop()  # Riavvia la partita in modalità singola
+                    elif game_mode == "1vs1":
+                        gameLoop1vs1()  # Riavvia la partita in modalità 1 vs 1
                 elif selected_option == 2:
                     gameMenu()                
     return True
@@ -582,17 +672,15 @@ def gameLoop():
     current_game_id = str(uuid.uuid4())
     game_over = False
     game_close = False
-    x1 = WIDTH / 2
-    y1 = HEIGHT / 2  
-    x1_change = 0
-    y1_change = 0
+    x1, y1 = WIDTH / 2, HEIGHT / 2  
+    x1_change, y1_change = 0, 0
     direction = None
     snake_List = []
     Length_of_snake = 1
     foodx, foody = generate_food(snake_List)
     special_food_timer = 0
     special_foodx, special_foody = None, None
-    score = 0
+    score = 1
     last_updated_score = 0
     global_records = read_records()
     mode_high_score = max((rec["score"] for rec in global_records[CURRENT_DIFFICULTY]), default=0)
@@ -617,30 +705,19 @@ def gameLoop():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game_over = True
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    mode_high_score = max((rec["score"] for rec in global_records[CURRENT_DIFFICULTY]), default=0)
-                    pauseMenu(score, mode_high_score)
-                elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
-                    if direction != "RIGHT":
-                        x1_change = -BLOCK_SIZE
-                        y1_change = 0
-                        direction = "LEFT"
-                elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
-                    if direction != "LEFT":
-                        x1_change = BLOCK_SIZE
-                        y1_change = 0
-                        direction = "RIGHT"
-                elif event.key == pygame.K_UP or event.key == pygame.K_w:
-                    if direction != "DOWN":
-                        y1_change = -BLOCK_SIZE
-                        x1_change = 0
-                        direction = "UP"
-                elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                    if direction != "UP":
-                        y1_change = BLOCK_SIZE
-                        x1_change = 0
-                        direction = "DOWN"
+
+            # Gestione input per il movimento del serpente
+            direction, x1_change, y1_change = snake_input(event, direction, x1_change, y1_change,score,mode_high_score, player=1,game_mode=game_mode)
+
+        keys = pygame.key.get_pressed()
+        if (keys[pygame.K_LEFT] or keys[pygame.K_a]) and (keys[pygame.K_RIGHT] or keys[pygame.K_d]):
+            x1_change = 0
+            y1_change = 0
+        elif (keys[pygame.K_UP] or keys[pygame.K_w]) and (keys[pygame.K_DOWN] or keys[pygame.K_s]):
+            x1_change = 0
+            y1_change = 0
+
+        # Aggiornamento della posizione del serpente
         x1 += x1_change
         y1 += y1_change
         if x1 < 0:
@@ -653,13 +730,19 @@ def gameLoop():
             y1 = SCOREBOARD_HEIGHT  
         x1 = (x1 // BLOCK_SIZE) * BLOCK_SIZE
         y1 = (y1 // BLOCK_SIZE) * BLOCK_SIZE
+
+        # Disegna la griglia
         for x in range(0, WIDTH, BLOCK_SIZE):
             pygame.draw.line(screen, (200, 200, 200), (x, SCOREBOARD_HEIGHT), (x, HEIGHT))
         for y in range(SCOREBOARD_HEIGHT, HEIGHT, BLOCK_SIZE):
             pygame.draw.line(screen, (200, 200, 200), (0, y), (WIDTH, y))
+        
+        # Disegna lo sfondo e il cibo
         draw_background()
         pygame.draw.circle(screen, BLACK, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
         pygame.draw.circle(screen, WHITE, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 - 2)
+
+        # Gestione del cibo speciale
         if special_food_timer > 0:
             pygame.draw.circle(screen, BLACK, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
             pygame.draw.circle(screen, DARK_GREY, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 -2)
@@ -668,6 +751,8 @@ def gameLoop():
             special_foodx = round(random.randrange(0, WIDTH - BLOCK_SIZE) / BLOCK_SIZE) * BLOCK_SIZE
             special_foody = round(random.randrange(0, HEIGHT - BLOCK_SIZE) / BLOCK_SIZE) * BLOCK_SIZE
             special_food_timer = 100
+        
+        # Aggiornamento della lista del serpente
         snake_Head = [x1, y1]
         snake_List.append(snake_Head)
         if len(snake_List) > Length_of_snake:
@@ -675,9 +760,15 @@ def gameLoop():
         for block in snake_List[:-1]:
             if block == snake_Head:
                 game_close = True
-        our_snake(BLOCK_SIZE, snake_List)
+
+        # Disegna il serpente
+        our_snake(BLOCK_SIZE, snake_List,player=1)
+
+        # Aggiorna la velocità e il punteggio
         SPEED, last_updated_score = update_speed(score, CURRENT_DIFFICULTY, SPEED, last_updated_score)
         draw_score_bar(score, mode_high_score, CURRENT_DIFFICULTY)
+
+        # Controllo collisione con il cibo
         if x1 == foodx and y1 == foody:
             foodx, foody = generate_food(snake_List)
             Length_of_snake += 1
@@ -689,13 +780,195 @@ def gameLoop():
             Length_of_snake += 5
             score += 5 * special_food_points_multiplier
             score = round(score, 1)
-       
+
+        # Aggiorna i record
         global_records = update_records(global_records, CURRENT_DIFFICULTY, score, current_game_id)
         write_records(global_records)
         check_for_special_effect_activation(score,foodx,foody,mode_high_score)
+
+        # Aggiorna lo schermo
         pygame.display.update()
         clock.tick(SPEED)
 
+    pygame.quit()
+    quit()
+
+def gameLoop1vs1():
+    """Gestisce il ciclo principale del gioco in modalità 1 vs 1."""
+    global global_records, CURRENT_DIFFICULTY, SPEED1, SPEED2, last_updated_score, Length_of_snake1, Length_of_snake2, food_points_multiplier, special_food_points_multiplier, last_score1, last_score2, snake_List1, snake_List2
+    game_over = False
+    game_close = False
+    x1, y1 = WIDTH / 4, HEIGHT / 2  # Posizione del Giocatore 1
+    x2, y2 = 3 * WIDTH / 4, HEIGHT / 2  # Posizione del Giocatore 2
+    x1_change, y1_change = 0, 0
+    x2_change, y2_change = 0, 0
+    direction1, direction2 = None, None
+    snake_List1, snake_List2 = [], []
+    Length_of_snake1, Length_of_snake2 = 1, 1
+    foodx, foody = generate_food(snake_List1 + snake_List2)
+    special_food_timer = 0
+    special_foodx, special_foody = None, None
+    score1, score2 = 1, 1
+    last_updated_score1, last_updated_score2 = 0, 0
+    last_score1, last_score2 = 0, 0
+    SPEED1, SPEED2 = 10, 10  # Velocità iniziale per entrambi i giocatori
+    food_points_multiplier1, food_points_multiplier2 = 1.0, 1.0
+    special_food_points_multiplier1, special_food_points_multiplier2 = 1.0, 1.0
+    if CURRENT_DIFFICULTY == "Relaxed":
+        initial_speed = 8 
+    elif CURRENT_DIFFICULTY == "Balanced":
+        initial_speed = 13 
+    elif CURRENT_DIFFICULTY == "Extreme":
+        initial_speed = 20
+    else:
+        initial_speed = 5
+    SPEED1 = initial_speed
+    SPEED2 = initial_speed
+    while not game_over:
+        while game_close:
+            game_over = not gameOverMenu(score1, score2)
+            if not game_over:
+                break  
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game_over = True
+
+            # Gestione input per il Giocatore 1 (WASD)
+            if event.type == pygame.KEYDOWN:
+                if event.key in [pygame.K_w, pygame.K_a, pygame.K_s, pygame.K_d]:
+                    direction1, x1_change, y1_change = snake_input(event, direction1, x1_change, y1_change, score1, None, player=1,game_mode="1vs1")
+                elif event.key == pygame.K_ESCAPE:  # Pause menu for Player 1
+                    pauseMenu(score1, None, game_mode="1vs1")
+
+            # Gestione input per il Giocatore 2 (Frecce)
+            if event.type == pygame.KEYDOWN:
+                if event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]:
+                    direction2, x2_change, y2_change = snake_input(event, direction2, x2_change, y2_change, score2, None, player=2,game_mode="1vs1")
+                elif event.key == pygame.K_BACKSPACE:  # Pause menu for Player 2
+                    pauseMenu(score2, None, game_mode="1vs1")
+
+        keys = pygame.key.get_pressed()
+        if (keys[pygame.K_LEFT] or keys[pygame.K_a]) and (keys[pygame.K_RIGHT] or keys[pygame.K_d]):
+            x1_change = 0
+            y1_change = 0
+        elif (keys[pygame.K_UP] or keys[pygame.K_w]) and (keys[pygame.K_DOWN] or keys[pygame.K_s]):
+            x1_change = 0
+            y1_change = 0
+        if (keys[pygame.K_LEFT] or keys[pygame.K_a]) and (keys[pygame.K_RIGHT] or keys[pygame.K_d]):
+            x2_change = 0
+            y2_change = 0
+        elif (keys[pygame.K_UP] or keys[pygame.K_w]) and (keys[pygame.K_DOWN] or keys[pygame.K_s]):
+            x2_change = 0
+            y2_change = 0
+        
+        # Aggiornamento della posizione del serpente 1
+        x1 += x1_change
+        y1 += y1_change
+        if x1 < 0:
+            x1 = WIDTH - BLOCK_SIZE
+        elif x1 >= WIDTH:
+            x1 = 0
+        if y1 < SCOREBOARD_HEIGHT:
+            y1 = HEIGHT - BLOCK_SIZE
+        elif y1 >= HEIGHT:
+            y1 = SCOREBOARD_HEIGHT
+        x1 = (x1 // BLOCK_SIZE) * BLOCK_SIZE
+        y1 = (y1 // BLOCK_SIZE) * BLOCK_SIZE
+
+        # Aggiornamento della posizione del serpente 2
+        x2 += x2_change
+        y2 += y2_change
+        if x2 < 0:
+            x2 = WIDTH - BLOCK_SIZE
+        elif x2 >= WIDTH:
+            x2 = 0
+        if y2 < SCOREBOARD_HEIGHT:
+            y2 = HEIGHT - BLOCK_SIZE
+        elif y2 >= HEIGHT:
+            y2 = SCOREBOARD_HEIGHT
+        x2 = (x2 // BLOCK_SIZE) * BLOCK_SIZE
+        y2 = (y2 // BLOCK_SIZE) * BLOCK_SIZE
+
+        # Disegna la griglia
+        for x in range(0, WIDTH, BLOCK_SIZE):
+            pygame.draw.line(screen, (200, 200, 200), (x, SCOREBOARD_HEIGHT), (x, HEIGHT))
+        for y in range(SCOREBOARD_HEIGHT, HEIGHT, BLOCK_SIZE):
+            pygame.draw.line(screen, (200, 200, 200), (0, y), (WIDTH, y))
+        
+        # Disegna lo sfondo e il cibo
+        draw_background()
+        pygame.draw.circle(screen, BLACK, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
+        pygame.draw.circle(screen, WHITE, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 - 2)
+
+        # Gestione del cibo speciale
+        if special_food_timer > 0:
+            pygame.draw.circle(screen, BLACK, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
+            pygame.draw.circle(screen, DARK_GREY, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 -2)
+            special_food_timer -= 1
+        elif special_food_timer == 0 and random.randint(1, 100) == 1:
+            special_foodx = round(random.randrange(0, WIDTH - BLOCK_SIZE) / BLOCK_SIZE) * BLOCK_SIZE
+            special_foody = round(random.randrange(0, HEIGHT - BLOCK_SIZE) / BLOCK_SIZE) * BLOCK_SIZE
+            special_food_timer = 100
+        
+        # Disegna il serpente 1
+        snake_Head1 = [x1, y1]
+        snake_List1.append(snake_Head1)
+        if len(snake_List1) > Length_of_snake1:
+            del snake_List1[0]
+        for block in snake_List1[:-1]:
+            if block == snake_Head1:
+                game_close = True
+
+        our_snake(BLOCK_SIZE, snake_List1, player=1) 
+
+        # Disegna il serpente 2
+        snake_Head2 = [x2, y2]
+        snake_List2.append(snake_Head2)
+        if len(snake_List2) > Length_of_snake2:
+            del snake_List2[0]
+        for block in snake_List2[:-1]:
+            if block == snake_Head2 or block == snake_Head1:
+                game_close = True
+
+        our_snake(BLOCK_SIZE, snake_List2, player=2) 
+
+        # Aggiornamento della velocità e punteggio
+        SPEED1, last_updated_score1 = update_speed(score1, CURRENT_DIFFICULTY, SPEED1, last_updated_score1)
+        SPEED2, last_updated_score2 = update_speed(score2, CURRENT_DIFFICULTY, SPEED2, last_updated_score2)
+
+        draw_score_bar(score1, score2, CURRENT_DIFFICULTY)
+        
+        # Controllo collisione con il cibo
+        if x1 == foodx and y1 == foody:
+            foodx, foody = generate_food(snake_List1 + snake_List2)
+            Length_of_snake1 += 1
+            score1 += 1 * food_points_multiplier1
+            score1 = round(score1, 1)
+        if x2 == foodx and y2 == foody:
+            foodx, foody = generate_food(snake_List1 + snake_List2)
+            Length_of_snake2 += 1
+            score2 += 1 * food_points_multiplier2
+            score2 = round(score2, 1)
+        if special_food_timer > 0 and x1 == special_foodx and y1 == special_foody:
+            special_foodx, special_foody = None, None
+            special_food_timer = 0
+            Length_of_snake1 += 5
+            score1 += 5 * special_food_points_multiplier1
+            score1 = round(score1, 1)
+        if special_food_timer > 0 and x2 == special_foodx and y2 == special_foody:
+            special_foodx, special_foody = None, None
+            special_food_timer = 0
+            Length_of_snake2 += 5
+            score2 += 5 * special_food_points_multiplier2
+            score2 = round(score1, 1)
+
+
+        # Aggiorna lo schermo
+        pygame.display.update()
+        clock.tick(min(SPEED1, SPEED2))  # Limita la velocità al più lento dei due giocatori
+        check_for_special_effect_activation(score1,foodx,foody,player=1)
+        check_for_special_effect_activation(score2,foodx,foody,player=2)
     pygame.quit()
     quit()
 
