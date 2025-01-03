@@ -79,7 +79,9 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
     option_offset = 0
 
     if title in ["Pause Menu", "Game Over"] and score is not None and high_score is not None:
-        draw_score_bar(score, high_score, CURRENT_DIFFICULTY)
+        #draw_score_bar(score, high_score, CURRENT_DIFFICULTY)
+        draw_score_bar(score, None, SPEED, None, Length_of_snake, None, high_score, CURRENT_DIFFICULTY)
+
 
     title_x = (WIDTH - title_font.render(title, True, GREEN).get_width()) // 2
     title_y = HEIGHT // 5
@@ -194,16 +196,17 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
                 pygame.draw.circle(screen, GREEN, (indicator_x, indicator_y), indicator_radius)
 
 
-def draw_score_bar(score, high_score, current_difficulty):
+def draw_score_bar(score1, score2, SPEED1, SPEED2, Length_of_snake1, Length_of_snake2, high_score, current_difficulty):
     """Disegna la barra del punteggio in alto nella finestra di gioco."""
     bar_height = 60
     pygame.draw.rect(screen, (50, 50, 50), [0, 0, WIDTH, bar_height])
     
-    draw_text_with_options(f"Score: {score:.1f}", font_style, 15, 15, (255, 255, 255), (0, 0, 0))
-    
-    record_x = WIDTH - font_style.size(f"Record: {high_score:.1f}")[0] - 15
-    draw_text_with_options(f"Record: {high_score:.1f}", font_style, record_x, 15, (255, 255, 255), (0, 0, 0))
-
+    draw_text_with_options(f"Score: {score1:.1f}", font_style, 15, 15, (255, 255, 255), (0, 0, 0))
+    if score2 == None:
+        record_x = WIDTH - font_style.size(f"Record: {high_score:.1f}")[0] - 15
+        draw_text_with_options(f"Record: {high_score:.1f}", font_style, record_x, 15, (255, 255, 255), (0, 0, 0))
+    SPEED = SPEED1
+    Length_of_snake = Length_of_snake1
     difficulty_label = "Mode:"
     label_x = (WIDTH - font_style.size(difficulty_label + " " + current_difficulty)[0]) // 2
     draw_text_with_options(difficulty_label, font_style, label_x, 15, (255, 255, 255), (0, 0, 0))
@@ -228,6 +231,17 @@ def draw_score_bar(score, high_score, current_difficulty):
     length_text = f"Length: {Length_of_snake}"
     length_x = speed_x + font_style_small.size(speed_text)[0] + 20
     draw_text_with_options(length_text, font_style_small, length_x, speed_y, (255, 255, 255), (0, 0, 0))
+
+    if score2:
+            draw_text_with_options(f"Score: {score2:.1f}", font_style, WIDTH - 200, 15, (255, 255, 255), (0, 0, 0))
+            speed2_text = f"Speed: {SPEED2:.2f}"
+            speed2_x = WIDTH - 190
+            speed2_y = 40
+            draw_text_with_options(speed2_text, font_style_small, speed2_x, speed2_y, (255, 255, 255), (0, 0, 0))
+
+            length2_text = f"Length: {Length_of_snake2}"
+            length2_x = speed2_x + font_style_small.size(speed2_text)[0] + 20
+            draw_text_with_options(length2_text, font_style_small, length2_x, speed2_y, (255, 255, 255), (0, 0, 0))
 
 def our_snake(block_size, snake_list, player):
     """Disegna il serpente sullo schermo."""
@@ -596,7 +610,9 @@ def show_special_effect_menu(score,foodx,foody,player):
     pygame.draw.circle(screen, BLACK, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
 
     # Disegna il punteggio attuale
-    draw_score_bar(score, mode_high_score, CURRENT_DIFFICULTY)
+    #draw_score_bar(score, mode_high_score, CURRENT_DIFFICULTY)
+    draw_score_bar(score, None, SPEED, None, Length_of_snake, None, mode_high_score, CURRENT_DIFFICULTY)
+
 
     while True:
         draw_menu("Choice a New Ability", option_texts, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None)
@@ -766,7 +782,8 @@ def gameLoop():
 
         # Aggiorna la velocità e il punteggio
         SPEED, last_updated_score = update_speed(score, CURRENT_DIFFICULTY, SPEED, last_updated_score)
-        draw_score_bar(score, mode_high_score, CURRENT_DIFFICULTY)
+        #draw_score_bar(score, mode_high_score, CURRENT_DIFFICULTY)
+        draw_score_bar(score, None, SPEED, None, Length_of_snake, None, mode_high_score, CURRENT_DIFFICULTY)
 
         # Controllo collisione con il cibo
         if x1 == foodx and y1 == foody:
@@ -937,7 +954,9 @@ def gameLoop1vs1():
         SPEED1, last_updated_score1 = update_speed(score1, CURRENT_DIFFICULTY, SPEED1, last_updated_score1)
         SPEED2, last_updated_score2 = update_speed(score2, CURRENT_DIFFICULTY, SPEED2, last_updated_score2)
 
-        draw_score_bar(score1, score2, CURRENT_DIFFICULTY)
+        #draw_score_bar(score1, score2, CURRENT_DIFFICULTY)
+        draw_score_bar(score1, score2, SPEED1, SPEED2, Length_of_snake1, Length_of_snake2, None, CURRENT_DIFFICULTY)
+
         
         # Controllo collisione con il cibo
         if x1 == foodx and y1 == foody:

@@ -6,4 +6,6 @@
 -bonus speciali
 -malus speciali
 -modalita' coop
--modalita' 1 vs 1
+-modalita' 1 vs 1: -sistemare menu gameover
+		   -sistemare velocità diverse per i player
+		   -sistemare menu di scelta degli effetti per i player
