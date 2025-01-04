@@ -19,6 +19,10 @@ DARK_GREY = (50, 50, 50)
 LIGHT_BLUE = (173, 216, 230)
 DARK_BLUE = (0, 102, 204)
 ORANGE = (243, 112, 33)
+AQUA = (36, 159, 156)
+DARK_AQUA = (3, 122, 118)
+PINK = (237, 27, 118)
+LIGHT_PINK = (244, 71, 134)
 
 # Dimensioni della finestra di gioco
 WIDTH, HEIGHT = 800, 600
@@ -72,7 +76,7 @@ def draw_text_with_options(text, font, x, y, text_color, outline_color=None, bg_
     
     screen.blit(text_surface, (x, y))
 
-def draw_menu(title, options, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None):
+def draw_menu(title, options, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None, game_mode=None):
     """Disegna un menu con il titolo e le opzioni fornite, evidenziando l'opzione selezionata."""
     if title != "Choice a New Ability":
         draw_background()
@@ -98,7 +102,12 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
             current_index = resolutions.index(current_resolution) if current_resolution in resolutions else 4
 
     elif title == "Game Over":
-        score_text = f"Your Score: {score}"
+        if game_mode == "single":
+            color = WHITE
+            score_text = f"Your Score: {score}"
+        if game_mode == "1vs1":
+            color = GREEN
+            score_text = f"Player 1 Score: {score}"
         score_width = font_style.render(score_text, True, GREEN).get_width()
         draw_text_with_options(
             score_text,
@@ -106,10 +115,13 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
             (WIDTH - score_width) // 2,
             HEIGHT // 3,
             DARK_GREY,
-            WHITE
+            color
         )
-        
-        high_score_text = f"High Score: {high_score}"
+        if game_mode == "single":
+            high_score_text = f"High Score: {high_score}"
+        if game_mode == "1vs1":
+            color = RED
+            high_score_text = f"Player 2 Score: {high_score}"
         high_score_width = font_style.render(high_score_text, True, GREEN).get_width()
         draw_text_with_options(
             high_score_text,
@@ -117,7 +129,7 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
             (WIDTH - high_score_width) // 2,
             HEIGHT // 3 + 40,
             DARK_GREY,
-            WHITE
+            color
         )
         option_offset = 100
 
@@ -202,6 +214,8 @@ def draw_score_bar(score1, score2, SPEED1, SPEED2, Length_of_snake1, Length_of_s
     pygame.draw.rect(screen, (50, 50, 50), [0, 0, WIDTH, bar_height])
     
     draw_text_with_options(f"Score: {score1:.1f}", font_style, 15, 15, (255, 255, 255), (0, 0, 0))
+    if high_score is None:
+        high_score = 0  
     if score2 == None:
         record_x = WIDTH - font_style.size(f"Record: {high_score:.1f}")[0] - 15
         draw_text_with_options(f"Record: {high_score:.1f}", font_style, record_x, 15, (255, 255, 255), (0, 0, 0))
@@ -243,15 +257,15 @@ def draw_score_bar(score1, score2, SPEED1, SPEED2, Length_of_snake1, Length_of_s
             length2_x = speed2_x + font_style_small.size(speed2_text)[0] + 20
             draw_text_with_options(length2_text, font_style_small, length2_x, speed2_y, (255, 255, 255), (0, 0, 0))
 
-def our_snake(block_size, snake_list, player):
+def our_snake(block_size, snake_List, player):
     """Disegna il serpente sullo schermo."""
     if player == 2:
-        for i, x in enumerate(snake_list):
+        for i, x in enumerate(snake_List):
             color = ( max(0, 255 - i * 5), 0, 0)
             pygame.draw.rect(screen, (0, 0, 0), [x[0] - 2, x[1] - 2, block_size + 4, block_size + 4], border_radius=5)
             pygame.draw.rect(screen, color, [x[0], x[1], block_size, block_size], border_radius=5)
     else:    
-        for i, x in enumerate(snake_list):
+        for i, x in enumerate(snake_List):
             color = (0, max(0, 255 - i * 5), 0)
             pygame.draw.rect(screen, (0, 0, 0), [x[0] - 2, x[1] - 2, block_size + 4, block_size + 4], border_radius=5)
             pygame.draw.rect(screen, color, [x[0], x[1], block_size, block_size], border_radius=5)
@@ -265,9 +279,9 @@ def generate_food(snake_List):
         if is_valid_food_position(food_x, food_y, snake_List): 
             return food_x, food_y
 
-def is_valid_food_position(x, y, snake_list):
+def is_valid_food_position(x, y, snake_List):
     """Controlla se la posizione del cibo è valida (non collida con il serpente)."""
-    for segment in snake_list:
+    for segment in snake_List:
         if segment == [x, y]:
             return False
     return True
@@ -291,41 +305,59 @@ def update_speed(score, CURRENT_DIFFICULTY, current_speed, last_updated_score):
         return current_speed + speed_increment, last_updated_score
     return current_speed, last_updated_score
 
-def check_for_special_effect_activation(score,foodx,foody, player):
+def check_for_special_effect_activation(score, foodx, foody, player, game_mode, mode_high_score):
     """Controlla se attivare il menu degli effetti speciali in base al punteggio."""
-    global last_score1, last_score2
-    if player == 1 and score > last_score1 + 5:
-        if CURRENT_DIFFICULTY == "Relaxed":
-            remainder = math.floor(score) % 15
-            if remainder in {0, 1, 2, 3, 4}:
-                last_score1 = score - remainder
-                show_special_effect_menu(score,foodx,foody, mode_high_score)
-        elif CURRENT_DIFFICULTY == "Balanced":
-            remainder = math.floor(score) % 30
-            if remainder in {0, 1, 2, 3, 4}:
-                last_score1 = score - remainder
-                show_special_effect_menu(score,foodx,foody, mode_high_score)
-        elif CURRENT_DIFFICULTY == "Extreme":
-            remainder = math.floor(score) % 60
-            if remainder in {0, 1, 2, 3, 4}:
-                last_score1 = score - remainder
-                show_special_effect_menu(score,foodx,foody, mode_high_score)
-    if player == 2 and score > last_score2 + 5:
-        if CURRENT_DIFFICULTY == "Relaxed":
-            remainder = math.floor(score) % 15
-            if remainder in {0, 1, 2, 3, 4}:
-                last_score2 = score - remainder
-                show_special_effect_menu(score,foodx,foody, mode_high_score)
-        elif CURRENT_DIFFICULTY == "Balanced":
-            remainder = math.floor(score) % 30
-            if remainder in {0, 1, 2, 3, 4}:
-                last_score2 = score - remainder
-                show_special_effect_menu(score,foodx,foody, mode_high_score)
-        elif CURRENT_DIFFICULTY == "Extreme":
-            remainder = math.floor(score) % 60
-            if remainder in {0, 1, 2, 3, 4}:
-                last_score2 = score - remainder
-                show_special_effect_menu(score,foodx,foody, mode_high_score)
+    global last_score, last_score1, last_score2
+    if game_mode == "single":
+        if player == 1 and score > last_score + 5:
+            if CURRENT_DIFFICULTY == "Relaxed":
+                remainder = math.floor(score) % 15
+                if remainder in {0, 1, 2, 3, 4}:
+                    last_score = score - remainder
+                    show_special_effect_menu(score, foodx, foody, player, game_mode, mode_high_score, snake_List)
+            elif CURRENT_DIFFICULTY == "Balanced":
+                remainder = math.floor(score) % 30
+                if remainder in {0, 1, 2, 3, 4}:
+                    last_score = score - remainder
+                    show_special_effect_menu(score, foodx, foody, player, game_mode, mode_high_score, snake_List)
+            elif CURRENT_DIFFICULTY == "Extreme":
+                remainder = math.floor(score) % 60
+                if remainder in {0, 1, 2, 3, 4}:
+                    last_score = score - remainder
+                    show_special_effect_menu(score, foodx, foody, player, game_mode, mode_high_score, snake_List)
+    if game_mode == "1vs1":
+        if player == 1 and score > last_score1 + 5:
+            if CURRENT_DIFFICULTY == "Relaxed":
+                remainder = math.floor(score) % 15
+                if remainder in {0, 1, 2, 3, 4}:
+                    last_score1 = score - remainder
+                    show_special_effect_menu(score, foodx, foody, player, game_mode, mode_high_score, snake_List1)
+            elif CURRENT_DIFFICULTY == "Balanced":
+                remainder = math.floor(score) % 30
+                if remainder in {0, 1, 2, 3, 4}:
+                    last_score1 = score - remainder
+                    show_special_effect_menu(score, foodx, foody, player, game_mode, mode_high_score, snake_List1)
+            elif CURRENT_DIFFICULTY == "Extreme":
+                remainder = math.floor(score) % 60
+                if remainder in {0, 1, 2, 3, 4}:
+                    last_score1 = score - remainder
+                    show_special_effect_menu(score, foodx, foody, player, game_mode, mode_high_score, snake_List1)
+        if player == 2 and score > last_score2 + 5:
+            if CURRENT_DIFFICULTY == "Relaxed":
+                remainder = math.floor(score) % 15
+                if remainder in {0, 1, 2, 3, 4}:
+                    last_score2 = score - remainder
+                    show_special_effect_menu(score, foodx, foody, player, game_mode, mode_high_score, snake_List2)
+            elif CURRENT_DIFFICULTY == "Balanced":
+                remainder = math.floor(score) % 30
+                if remainder in {0, 1, 2, 3, 4}:
+                    last_score2 = score - remainder
+                    show_special_effect_menu(score, foodx, foody, player, game_mode, mode_high_score, snake_List2)
+            elif CURRENT_DIFFICULTY == "Extreme":
+                remainder = math.floor(score) % 60
+                if remainder in {0, 1, 2, 3, 4}:
+                    last_score2 = score - remainder
+                    show_special_effect_menu(score, foodx, foody, player, game_mode, mode_high_score, snake_List2)
 
 def snake_input(event, direction, x1_change, y1_change,score, mode_high_score,player=None,game_mode=None):
     """Gestisce l'input dell'utente per il movimento del serpente."""
@@ -362,41 +394,80 @@ def snake_input(event, direction, x1_change, y1_change,score, mode_high_score,pl
     return direction, x1_change, y1_change
 
 # Funzioni per gli effetti speciali
-def decrease_speed():
-    """Diminuisce la velocità del gioco di 5."""
-    global SPEED
-    SPEED = max(1, SPEED - 5)  # Assicurati che la velocità non scenda sotto 1
-    print("Velocità diminuita di 5.")
+def decrease_speed(player, game_mode):
+    """Diminuisce la velocità del gioco di 5 per il giocatore specificato."""
+    global SPEED, SPEED1, SPEED2
+    print(f"Attivazione effetti per il Giocatore {player} in modalita {game_mode}")
+    if game_mode == "single":
+        SPEED = max(1, SPEED - 5)  # Assicurati che la velocità non scenda sotto 1
+        print("Velocità diminuita di 5.")
+    elif game_mode == "1vs1":
+        if player == 1:
+            SPEED1 = max(1, SPEED1 - 5)
+            print("Velocità del Giocatore 1 diminuita di 5.")
+        elif player == 2:
+            SPEED2 = max(1, SPEED2 - 5)
+            print("Velocità del Giocatore 2 diminuita di 5.")    
 
-def increase_food_points():
-    """Il cibo normale fornisce il 20% di punti in più."""
-    global food_points_multiplier
-    food_points_multiplier += 0.20  # Moltiplicatore per il punteggio del cibo normale
-    print("Il cibo normale fornisce il 20% di punti in più.")
+def increase_food_points(player, game_mode):
+    """Il cibo normale fornisce il 20% di punti in più per il giocatore specificato."""
+    global food_points_multiplier, food_points_multiplier1, food_points_multiplier2
+    print(f"Attivazione effetti per il Giocatore {player} in modalita {game_mode}")
+    if game_mode == "single":
+        food_points_multiplier += 0.20  # Moltiplicatore per il punteggio del cibo normale
+        print("Il cibo normale fornisce il 20% di punti in più.")
+    elif game_mode == "1vs1":
+        if player == 1:
+            food_points_multiplier1 += 0.20
+            print("Il cibo normale fornisce il 20% di punti in più per il Giocatore 1.")
+        elif player == 2:
+            food_points_multiplier2 += 0.20
+            print("Il cibo normale fornisce il 20% di punti in più per il Giocatore 2.")
 
-def decrease_length():
-    """Dimezza la lunghezza del serpente e aggiorna la lista del serpente visivamente."""
-    global Length_of_snake, snake_List  # Dichiarare Length_of_snake e snake_List come globali
-    Length_of_snake = max(1, math.ceil(Length_of_snake / 2))  # Assicurati che la lunghezza non scenda sotto 1
-    # Rimuovi gli ultimi segmenti dalla lista del serpente
-    while len(snake_List) > Length_of_snake:
-        snake_List.pop(0)  # Rimuove l'ultimo segmento
-    print("Lunghezza del serpente dimezzata.")
-
-def increase_special_food_points():
-    """Il cibo speciale fornisce il 50% di punti in più."""
-    global special_food_points_multiplier
-    special_food_points_multiplier += 0.5  # Moltiplicatore per il punteggio del cibo speciale
-    print("Il cibo speciale fornisce il 50% di punti in più.")
+def increase_special_food_points(player, game_mode):
+    """Il cibo speciale fornisce il 50% di punti in più per il giocatore specificato."""
+    global special_food_points_multiplier, special_food_points_multiplier1, special_food_points_multiplier2
+    print(f"Attivazione effetti per il Giocatore {player} in modalita {game_mode}")
+    if game_mode == "single":
+        special_food_points_multiplier += 0.5  # Moltiplicatore per il punteggio del cibo speciale
+        print("Il cibo speciale fornisce il 50% di punti in più.")
+    elif game_mode == "1vs1":
+        if player == 1:
+            special_food_points_multiplier1 += 0.5
+            print("Il cibo speciale fornisce il 50% di punti in più per il Giocatore 1.")
+        elif player == 2:
+            special_food_points_multiplier2 += 0.5
+            print("Il cibo speciale fornisce il 50% di punti in più per il Giocatore 2.")
+            
+def decrease_length(player, game_mode):
+    """Dimezza la lunghezza del serpente e aggiorna la lista del serpente visivamente per il giocatore specificato."""
+    global Length_of_snake, snake_List,Length_of_snake1, Length_of_snake2, snake_List1, snake_List2
+    print(f"Attivazione effetti per il Giocatore {player} in modalita {game_mode}")
+    if game_mode == "single":
+        Length_of_snake = max(1, math.ceil(Length_of_snake / 2))  # Assicurati che la lunghezza non scenda sotto 1
+        # Rimuovi gli ultimi segmenti dalla lista del serpente
+        while len(snake_List) > Length_of_snake:
+            snake_List.pop(0)  # Rimuove l'ultimo segmento
+        print("Lunghezza del serpente dimezzata.")
+    elif game_mode == "1vs1":
+        if player == 1:
+            Length_of_snake1 = max(1, math.ceil(Length_of_snake1 / 2))
+            while len(snake_List1) > Length_of_snake1:
+                snake_List1.pop(0)
+            print("Lunghezza del serpente del Giocatore 1 dimezzata.")
+        elif player == 2:
+            Length_of_snake2 = max(1, math.ceil(Length_of_snake2 / 2))
+            while len(snake_List2) > Length_of_snake2:
+                snake_List2.pop(0)
+            print("Lunghezza del serpente del Giocatore 2 dimezzata.")    
 
 # Definizione degli effetti speciali
 special_effects = [
     ("Diminuisci la velocità di 5", decrease_speed),
     ("Il cibo normale fornirà il 20% di punti in più", increase_food_points),
     ("Dimezza la lunghezza del serpente", decrease_length),
-    ("Il cibo speciale fornirà il 50% di punti in più", increase_special_food_points),
+    ("Il cibo speciale fornirà il 50% di punti in più", increase_special_food_points)
 ]
-
 # Funzioni di Gestione dei Record
 def read_records():
     """Legge i record dal file 'record.txt' e restituisce un dizionario con i punteggi."""
@@ -461,7 +532,7 @@ def gameMenu():
     selected_option = 0
     options = ["Play", "High Score", "Mode", "Resolution", "Quit"]
     while menu:
-        draw_menu("Snake Game", options, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None)
+        draw_menu("Snake Game", options, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None, game_mode=None)
         pygame.display.update()
 
         # Gestisci input utente
@@ -598,21 +669,25 @@ def changeResolution():
                     WIDTH, HEIGHT = resolutions[selected_option]  
                     screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-def show_special_effect_menu(score,foodx,foody,player):
+# Funzione per mostrare il menu degli effetti speciali
+def show_special_effect_menu(score, foodx, foody, player, game_mode, mode_high_score, snake_List):
     """Mostra il menu per scegliere un effetto speciale."""
     selected_option = 0
     options = random.sample(special_effects, 3)
-    option_texts = [opt[0] for opt in options]
+    option_texts = [opt[0] for opt in options] 
 
     # Disegna la situazione attuale
     draw_background()
-    our_snake(BLOCK_SIZE, snake_List,player=1)  
+    our_snake(BLOCK_SIZE, snake_List, player=1)  
+    if game_mode == "1vs1":
+        our_snake(BLOCK_SIZE, snake_List2, player=2)
     pygame.draw.circle(screen, BLACK, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
 
     # Disegna il punteggio attuale
-    #draw_score_bar(score, mode_high_score, CURRENT_DIFFICULTY)
-    draw_score_bar(score, None, SPEED, None, Length_of_snake, None, mode_high_score, CURRENT_DIFFICULTY)
-
+    if game_mode == "single":
+        draw_score_bar(score, None, SPEED, None, Length_of_snake, None, mode_high_score, CURRENT_DIFFICULTY)
+    elif game_mode == "1vs1":
+        draw_score_bar(score, None, SPEED, None, Length_of_snake, None, None, CURRENT_DIFFICULTY)
 
     while True:
         draw_menu("Choice a New Ability", option_texts, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None)
@@ -623,10 +698,10 @@ def show_special_effect_menu(score,foodx,foody,player):
                 pygame.quit()
                 quit()
 
-            selected_option, confirmed = handle_menu_input([opt[0] for opt in options], selected_option, event)
+            selected_option, confirmed = handle_menu_input(option_texts, selected_option, event)
             if confirmed:
-                print(f"Effetto scelto per il Giocatore {player}: {options[selected_option][0]}")
-                options[selected_option][1]()
+                print(f"Effetto scelto: {options[selected_option][0]}")
+                options[selected_option][1](player, game_mode)
                 return
 
 def pauseMenu(score, current_high_score,game_mode):
@@ -656,16 +731,17 @@ def pauseMenu(score, current_high_score,game_mode):
                     gameMenu()                
     return True
 
-def gameOverMenu(score, mode_high_score):
+def gameOverMenu(score, mode_high_score,game_mode):
     """Mostra il menu di fine gioco e gestisce la navigazione tra le opzioni."""
     game_close = True
     selected_option = 0
     options = ["Play Again", "Main Menu"]
     score_font = pygame.font.SysFont("bahnschrift", 30)
     records = read_records()
-    mode_high_score = max((rec["score"] for rec in records[CURRENT_DIFFICULTY]), default=0)
+    if game_mode == "single":
+        mode_high_score = max((rec["score"] for rec in records[CURRENT_DIFFICULTY]), default=0)
     while game_close:
-        draw_menu("Game Over", options, selected_option, score, mode_high_score, resolutions=None, is_fullscreen=None, all_high_scores=None)
+        draw_menu("Game Over", options, selected_option, score, mode_high_score, resolutions=None, is_fullscreen=None, all_high_scores=None, game_mode=game_mode)
         pygame.display.update()
 
         # Gestisci input utente
@@ -676,7 +752,10 @@ def gameOverMenu(score, mode_high_score):
             selected_option, confirmed = handle_menu_input(options, selected_option, event)
             if confirmed:
                 if selected_option == 0:
-                    gameLoop()
+                    if game_mode == "single":
+                        gameLoop()  # Riavvia la partita in modalità singola
+                    elif game_mode == "1vs1":
+                        gameLoop1vs1()  # Riavvia la partita in modalità 1 vs 1
                 elif selected_option == 1:
                     gameMenu()
     return True
@@ -715,7 +794,7 @@ def gameLoop():
     while not game_over:
         while game_close:
             mode_high_score = max((rec["score"] for rec in global_records[CURRENT_DIFFICULTY]), default=0)
-            game_over = not gameOverMenu(score, mode_high_score)
+            game_over = not gameOverMenu(score, mode_high_score,game_mode="single")
             if not game_over:
                 break  
         for event in pygame.event.get():
@@ -801,7 +880,7 @@ def gameLoop():
         # Aggiorna i record
         global_records = update_records(global_records, CURRENT_DIFFICULTY, score, current_game_id)
         write_records(global_records)
-        check_for_special_effect_activation(score,foodx,foody,mode_high_score)
+        check_for_special_effect_activation(score, foodx, foody, player=1, game_mode="single",mode_high_score=mode_high_score)
 
         # Aggiorna lo schermo
         pygame.display.update()
@@ -812,7 +891,7 @@ def gameLoop():
 
 def gameLoop1vs1():
     """Gestisce il ciclo principale del gioco in modalità 1 vs 1."""
-    global global_records, CURRENT_DIFFICULTY, SPEED1, SPEED2, last_updated_score, Length_of_snake1, Length_of_snake2, food_points_multiplier, special_food_points_multiplier, last_score1, last_score2, snake_List1, snake_List2
+    global global_records, CURRENT_DIFFICULTY, SPEED1, SPEED2, last_updated_score, Length_of_snake1, Length_of_snake2, food_points_multiplier, special_food_points_multiplier, last_score1, last_score2, snake_List1, snake_List2, food_points_multiplier, food_points_multiplier1, food_points_multiplier2,special_food_points_multiplier, special_food_points_multiplier1, special_food_points_multiplier2 
     game_over = False
     game_close = False
     x1, y1 = WIDTH / 4, HEIGHT / 2  # Posizione del Giocatore 1
@@ -843,7 +922,7 @@ def gameLoop1vs1():
     SPEED2 = initial_speed
     while not game_over:
         while game_close:
-            game_over = not gameOverMenu(score1, score2)
+            game_over = not gameOverMenu(score1, score2,game_mode="1vs1")
             if not game_over:
                 break  
 
@@ -962,32 +1041,35 @@ def gameLoop1vs1():
         if x1 == foodx and y1 == foody:
             foodx, foody = generate_food(snake_List1 + snake_List2)
             Length_of_snake1 += 1
-            score1 += 1 * food_points_multiplier1
+            score1 += 1 * food_points_multiplier1  # Incremento del punteggio per il cibo normale
             score1 = round(score1, 1)
+
         if x2 == foodx and y2 == foody:
             foodx, foody = generate_food(snake_List1 + snake_List2)
             Length_of_snake2 += 1
-            score2 += 1 * food_points_multiplier2
+            score2 += 1 * food_points_multiplier2  # Incremento del punteggio per il cibo normale
             score2 = round(score2, 1)
+
         if special_food_timer > 0 and x1 == special_foodx and y1 == special_foody:
             special_foodx, special_foody = None, None
             special_food_timer = 0
             Length_of_snake1 += 5
-            score1 += 5 * special_food_points_multiplier1
+            score1 += 5 * special_food_points_multiplier1  # Incremento del punteggio per il cibo speciale
             score1 = round(score1, 1)
+
         if special_food_timer > 0 and x2 == special_foodx and y2 == special_foody:
             special_foodx, special_foody = None, None
             special_food_timer = 0
             Length_of_snake2 += 5
-            score2 += 5 * special_food_points_multiplier2
-            score2 = round(score1, 1)
+            score2 += 5 * special_food_points_multiplier2  # Incremento del punteggio per il cibo speciale
+            score2 = round(score2, 1)
 
 
         # Aggiorna lo schermo
         pygame.display.update()
         clock.tick(min(SPEED1, SPEED2))  # Limita la velocità al più lento dei due giocatori
-        check_for_special_effect_activation(score1,foodx,foody,player=1)
-        check_for_special_effect_activation(score2,foodx,foody,player=2)
+        check_for_special_effect_activation(score1, foodx, foody, player=1, game_mode="1vs1", mode_high_score = None)
+        check_for_special_effect_activation(score2, foodx, foody, player=2, game_mode="1vs1", mode_high_score = None)
     pygame.quit()
     quit()
 

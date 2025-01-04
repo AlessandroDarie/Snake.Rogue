@@ -15,16 +15,16 @@
     ],
     "Balanced": [
         {
+            "score": 118.6,
+            "game_id": "d9b1e0da-692e-40f2-83f3-761b08683b40"
+        },
+        {
+            "score": 115.0,
+            "game_id": "3f2b5f75-c081-4895-be16-5c7968dce420"
+        },
+        {
             "score": 113.0,
             "game_id": "1fedd826-2ea0-461f-82f7-3422e8cf15fa"
-        },
-        {
-            "score": 97.0,
-            "game_id": "b3b96967-1bab-47cd-8241-f19a92d73335"
-        },
-        {
-            "score": 90.9,
-            "game_id": "1f48cc43-ea14-4024-a964-e7ee7e236156"
         }
     ],
     "Extreme": [
