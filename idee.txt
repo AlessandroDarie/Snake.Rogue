@@ -8,5 +8,8 @@
 -modalita' coop
 -modalita' 1 vs 1:
 		   -sistemare velocità diverse per i player
+		   -sistemare menu di scelta degli effetti:
+				-attualmente vengono passati speed e lenght sbagliati e record
+				-da rivedere la logica di attivazione menu' degli effetti
 -aggiungere palette diverse sbloccabili
 -aggiunge serpenti diversi sbloccabili

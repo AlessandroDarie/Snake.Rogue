@@ -12,6 +12,8 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (213, 50, 80)
 GREEN = (0, 255, 0)
+DARK_GREEN = (0, 100, 0)
+LIGHT_GREEN = (127, 255, 0)
 BLUE = (50, 153, 213)
 YELLOW = (255, 255, 102)
 GREY = (200, 200, 200)
@@ -23,6 +25,15 @@ AQUA = (36, 159, 156)
 DARK_AQUA = (3, 122, 118)
 PINK = (237, 27, 118)
 LIGHT_PINK = (244, 71, 134)
+
+# Definizione palette colori standard
+color_text = WHITE
+color_outline = BLACK
+color_bg = DARK_GREY
+color_secondary = GREY
+color_snake_1 = GREEN
+color_snake_2 = RED
+
 
 # Dimensioni della finestra di gioco
 WIDTH, HEIGHT = 800, 600
@@ -48,15 +59,43 @@ game_mode = "single"
 
 # Font utilizzati nel gioco
 font_style = pygame.font.SysFont("bahnschrift", 30)
+font_style_winner = pygame.font.SysFont("bahnschrift", 50)
+font_style_details = pygame.font.SysFont("bahnschrift", 20)
 font_style_small = pygame.font.SysFont('Arial', 15)
 title_font = pygame.font.SysFont("bahnschrift", 55)
+
+#Funzioni di temi e colori
+
+# Definizione dei temi di colore
+themes = {
+    "Tema Standard": {
+        "color_text": WHITE,
+        "color_outline": BLACK,
+        "color_bg": DARK_GREY,
+        "color_secondary": GREY
+    },
+    "Tema Squid Game": {
+        "color_text": WHITE,
+        "color_outline": PINK,
+        "color_bg": DARK_AQUA,
+        "color_secondary": AQUA
+    }
+}
+
+def change_theme(selected_theme):
+    global color_text, color_outline, color_bg, color_secondary
+    theme = themes[selected_theme]
+    color_text = theme["color_text"]
+    color_outline = theme["color_outline"]
+    color_bg = theme["color_bg"]
+    color_secondary = theme["color_secondary"]
 
 # Funzioni di disegno
 def draw_background():
     """Disegna lo sfondo del gioco con un gradiente di grigio."""
     for y in range(HEIGHT):
         color = tuple(
-            DARK_GREY[i] + (GREY[i] - DARK_GREY[i]) * y // HEIGHT for i in range(3)
+            color_bg[i] + (color_secondary[i] - color_bg[i]) * y // HEIGHT for i in range(3)
         )
         pygame.draw.line(screen, color, (0, y), (WIDTH, y))
 
@@ -72,25 +111,26 @@ def draw_text_with_options(text, font, x, y, text_color, outline_color=None, bg_
     
     if bg_color:
         pygame.draw.rect(screen, bg_color, [x - 15, y - 7.5, text_width + 30, text_height + 15], border_radius=border_radius)
-        pygame.draw.rect(screen, BLACK, [x - 15, y - 7.5, text_width + 30, text_height + 15], border_radius=border_radius, width=3)
+        pygame.draw.rect(screen, outline_color, [x - 15, y - 7.5, text_width + 30, text_height + 15], border_radius=border_radius, width=3)
     
     screen.blit(text_surface, (x, y))
 
-def draw_menu(title, options, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None, game_mode=None):
+def draw_menu(title, options, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None, game_mode=None, death_reason=None, ender_player=None):
     """Disegna un menu con il titolo e le opzioni fornite, evidenziando l'opzione selezionata."""
     if title != "Choice a New Ability":
         draw_background()
     option_offset = 0
 
-    if title in ["Pause Menu", "Game Over"] and score is not None and high_score is not None:
-        #draw_score_bar(score, high_score, CURRENT_DIFFICULTY)
-        draw_score_bar(score, None, SPEED, None, Length_of_snake, None, high_score, CURRENT_DIFFICULTY)
+    if game_mode == "single":
+        draw_score_bar(score, high_score, SPEED, None, Length_of_snake, None, all_high_scores, CURRENT_DIFFICULTY)
+    elif game_mode == "1vs1":
+        draw_score_bar(score, high_score, SPEED1, SPEED2, Length_of_snake1, Length_of_snake2, None, CURRENT_DIFFICULTY)
 
 
     title_x = (WIDTH - title_font.render(title, True, GREEN).get_width()) // 2
     title_y = HEIGHT // 5
     border_radius_value = 100
-    draw_text_with_options(title, title_font, title_x, title_y, WHITE, BLACK, DARK_GREY, border_radius=border_radius_value)
+    draw_text_with_options(title, title_font, title_x, title_y, color_text, color_outline, color_bg, border_radius=border_radius_value)
 
     if title == "Change Resolution":
         current_resolution = (WIDTH, HEIGHT)
@@ -103,35 +143,58 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
 
     elif title == "Game Over":
         if game_mode == "single":
-            color = WHITE
             score_text = f"Your Score: {score}"
-        if game_mode == "1vs1":
-            color = GREEN
-            score_text = f"Player 1 Score: {score}"
-        score_width = font_style.render(score_text, True, GREEN).get_width()
-        draw_text_with_options(
-            score_text,
-            font_style,
-            (WIDTH - score_width) // 2,
-            HEIGHT // 3,
-            DARK_GREY,
-            color
-        )
-        if game_mode == "single":
+            score_width = font_style.render(score_text, True, GREEN).get_width()
+            draw_text_with_options(score_text,font_style,(WIDTH - score_width) // 2,HEIGHT // 3,color_bg,color_text)
             high_score_text = f"High Score: {high_score}"
+            high_score_width = font_style.render(high_score_text, True, GREEN).get_width()
+            draw_text_with_options(high_score_text,font_style,(WIDTH - high_score_width) // 2,HEIGHT // 3 + 40,color_bg,color_text)
+            option_offset = 100
         if game_mode == "1vs1":
-            color = RED
-            high_score_text = f"Player 2 Score: {high_score}"
-        high_score_width = font_style.render(high_score_text, True, GREEN).get_width()
-        draw_text_with_options(
-            high_score_text,
-            font_style,
-            (WIDTH - high_score_width) // 2,
-            HEIGHT // 3 + 40,
-            DARK_GREY,
-            color
-        )
-        option_offset = 100
+            score_text1 = f"Giocatore 1 Score: {score:.1f}"
+            score_text2 = f"Giocatore 2 Score: {high_score:.1f}"
+            draw_text_with_options(score_text1, font_style, (WIDTH - font_style.size(score_text1)[0]) // 2, HEIGHT // 3, color_text, color_outline)
+            draw_text_with_options(score_text2, font_style, (WIDTH - font_style.size(score_text2)[0]) // 2, HEIGHT // 3 + 40, color_text, color_outline)
+            
+            if death_reason == "Penalità per aver sbattuto contro te stesso" and ender_player == "player 1":
+                reason_text = "La partita si è conclusa a causa del Giocatore 1: "
+                penalty = -0.20
+            elif death_reason == "Penalità per aver sbattuto contro l'avversario" and ender_player == "player 1":
+                reason_text = "La partita si è conclusa a causa del Giocatore 1: "
+                penalty = -0.10
+            elif death_reason == "Penalità per aver sbattuto contro te stesso" and ender_player == "player 2":
+                reason_text = "La partita si è conclusa a causa del Giocatore 2: "
+                penalty = -0.20
+            elif death_reason == "Penalità per aver sbattuto contro l'avversario" and ender_player == "player 2":
+                reason_text = "La partita si è conclusa a causa del Giocatore 2: "
+                penalty = -0.10
+
+            # Display the reason for the game ending
+            draw_text_with_options(reason_text, font_style_details, (WIDTH - font_style_details.size(reason_text)[0]) // 2, HEIGHT // 3 + 90, color_text, color_outline)
+            
+            # Display the penalty
+            draw_text_with_options(f"{death_reason}", font_style_details, (WIDTH - font_style_details.size(death_reason)[0]) // 2, HEIGHT // 3 + 115, color_text, color_outline)
+            draw_text_with_options(f"Penalità: {penalty * 100:.0f}%", font_style_details, (WIDTH - font_style_details.size(f"Penalità: {penalty * 100:.0f}%")[0]) // 2, HEIGHT // 3 + 140, color_text, color_outline)
+
+            if ender_player == "player 1":
+                score += (penalty * score)
+                score_text1 = f"Nuovo Giocatore 1 Score : {score:.1f}"
+                draw_text_with_options(score_text1, font_style_details, (WIDTH - font_style_details.size(score_text1)[0]) // 2, HEIGHT // 3+165, color_text, color_outline)
+
+            elif ender_player == "player 2":
+                high_score += (penalty * high_score)
+                score_text2 = f"Nuovo Giocatore 2 Score : {high_score:.1f}"
+                draw_text_with_options(score_text2, font_style_details, (WIDTH - font_style_details.size(score_text2)[0]) // 2, HEIGHT // 3 + 165, color_text, color_outline)
+
+            if score>high_score:
+                winner_text = "Player 1 is the Winner!"
+            elif score<high_score:
+                winner_text = "Player 2 is the Winner!"
+            else:
+                winner_text = "It's a Draw!"
+            
+            # Display the winner
+            draw_text_with_options(winner_text, font_style_winner, (WIDTH - font_style_winner.size(winner_text)[0]) // 2, HEIGHT // 3 + 220, GREEN, color_outline)
 
     elif title == "High Score":
         column_width = WIDTH // 4
@@ -148,9 +211,9 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
                 large_font_style, 
                 column_x + ( column_width - large_font_style.size(mode_title_text)[0]) // 2, 
                 y_start + 10, 
+                color_outline, 
                 BLACK, 
-                BLACK, 
-                WHITE
+                color_text
             )
             y_offset = y_start + 75 
             top_scores = scores[:3] if scores else ["No Records"]
@@ -158,30 +221,33 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
                 record_text = f"{i + 1}. {score['score']}"
                 draw_text_with_options(record_text, large_font_style_small, 
                                        column_x + (column_width - large_font_style_small.size(record_text)[0]) // 2, 
-                                       y_offset, record_color, BLACK)
+                                       y_offset, record_color, color_outline)
                 y_offset += 40
         option_offset = 300
 
     for i, option in enumerate(options):
-        color = WHITE if i != selected_option else BLACK
+        color = color_text if i != selected_option else color_outline
         option_text = font_style.render(option, True, color)
         option_x = WIDTH // 2 - option_text.get_width() // 2
         if title == "Choice a New Ability":
             option_offset = 50
+        if title == "Game Over":
+            option_offset = HEIGHT / 2
         option_y = HEIGHT // 3 + i * 50 + option_offset
 
+
         if title == "Choice a New Ability":
-            pygame.draw.rect(screen, BLACK, 
+            pygame.draw.rect(screen, color_outline, 
                  [option_x - 8, option_y - 8, option_text.get_width() + 16, option_text.get_height() + 16], 
                  border_radius=100)
         for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2), (-2, -2), (-2, 2), (2, -2), (2, 2)]:
-            outline_text = font_style.render(option, True, BLACK)
+            outline_text = font_style.render(option, True, color_outline)
             screen.blit(outline_text, (option_x + dx, option_y + dy))
         screen.blit(option_text, (option_x, option_y))
 
         if i == selected_option:
-            border_color = BLACK
-            bg_color = WHITE
+            border_color = color_outline
+            bg_color = color_text
             pygame.draw.rect(screen, border_color, 
                              [option_x - 8, option_y - 8, option_text.get_width() + 16, option_text.get_height() + 16],
                              border_radius=20)
@@ -196,7 +262,7 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
                 indicator_radius = 6
                 indicator_x = option_x - 30
                 indicator_y = option_y + option_text.get_height() // 2 
-                pygame.draw.circle(screen, BLACK, (indicator_x, indicator_y), indicator_radius + 3)
+                pygame.draw.circle(screen, color_outline, (indicator_x, indicator_y), indicator_radius + 3)
                 pygame.draw.circle(screen, GREEN, (indicator_x, indicator_y), indicator_radius)
 
         elif title == "Change Resolution":
@@ -204,7 +270,7 @@ def draw_menu(title, options, selected_option, score=None, high_score=None, reso
                 indicator_radius = 6
                 indicator_x = option_x - 30
                 indicator_y = option_y + option_text.get_height() // 2
-                pygame.draw.circle(screen, BLACK, (indicator_x, indicator_y), indicator_radius + 3)
+                pygame.draw.circle(screen, color_outline, (indicator_x, indicator_y), indicator_radius + 3)
                 pygame.draw.circle(screen, GREEN, (indicator_x, indicator_y), indicator_radius)
 
 
@@ -213,17 +279,17 @@ def draw_score_bar(score1, score2, SPEED1, SPEED2, Length_of_snake1, Length_of_s
     bar_height = 60
     pygame.draw.rect(screen, (50, 50, 50), [0, 0, WIDTH, bar_height])
     
-    draw_text_with_options(f"Score: {score1:.1f}", font_style, 15, 15, (255, 255, 255), (0, 0, 0))
+    draw_text_with_options(f"Score: {score1:.1f}", font_style, 15, 15, color_text, color_outline)
     if high_score is None:
         high_score = 0  
     if score2 == None:
         record_x = WIDTH - font_style.size(f"Record: {high_score:.1f}")[0] - 15
-        draw_text_with_options(f"Record: {high_score:.1f}", font_style, record_x, 15, (255, 255, 255), (0, 0, 0))
+        draw_text_with_options(f"Record: {high_score:.1f}", font_style, record_x, 15, color_text, color_outline)
     SPEED = SPEED1
     Length_of_snake = Length_of_snake1
     difficulty_label = "Mode:"
     label_x = (WIDTH - font_style.size(difficulty_label + " " + current_difficulty)[0]) // 2
-    draw_text_with_options(difficulty_label, font_style, label_x, 15, (255, 255, 255), (0, 0, 0))
+    draw_text_with_options(difficulty_label, font_style, label_x, 15, color_text, color_outline)
     
     if current_difficulty == "Relaxed":
         difficulty_color = (0, 255, 0)
@@ -235,39 +301,39 @@ def draw_score_bar(score1, score2, SPEED1, SPEED2, Length_of_snake1, Length_of_s
         difficulty_color = (255, 255, 255)
     
     difficulty_x = label_x + font_style.size(difficulty_label)[0] + 5
-    draw_text_with_options(current_difficulty, font_style, difficulty_x, 15, difficulty_color, (0, 0, 0))
+    draw_text_with_options(current_difficulty, font_style, difficulty_x, 15, difficulty_color, color_outline)
 
     speed_text = f"Speed: {SPEED:.2f}"
     speed_x = 20
     speed_y = 40
-    draw_text_with_options(speed_text, font_style_small, speed_x, speed_y, (255, 255, 255), (0, 0, 0))
+    draw_text_with_options(speed_text, font_style_small, speed_x, speed_y, color_text, color_outline)
 
     length_text = f"Length: {Length_of_snake}"
     length_x = speed_x + font_style_small.size(speed_text)[0] + 20
-    draw_text_with_options(length_text, font_style_small, length_x, speed_y, (255, 255, 255), (0, 0, 0))
+    draw_text_with_options(length_text, font_style_small, length_x, speed_y, color_text, color_outline)
 
-    if score2:
-            draw_text_with_options(f"Score: {score2:.1f}", font_style, WIDTH - 200, 15, (255, 255, 255), (0, 0, 0))
+    if SPEED2:
+            draw_text_with_options(f"Score: {score2:.1f}", font_style, WIDTH - 200, 15, color_text, color_outline)
             speed2_text = f"Speed: {SPEED2:.2f}"
             speed2_x = WIDTH - 190
             speed2_y = 40
-            draw_text_with_options(speed2_text, font_style_small, speed2_x, speed2_y, (255, 255, 255), (0, 0, 0))
+            draw_text_with_options(speed2_text, font_style_small, speed2_x, speed2_y, color_text, color_outline)
 
             length2_text = f"Length: {Length_of_snake2}"
             length2_x = speed2_x + font_style_small.size(speed2_text)[0] + 20
-            draw_text_with_options(length2_text, font_style_small, length2_x, speed2_y, (255, 255, 255), (0, 0, 0))
+            draw_text_with_options(length2_text, font_style_small, length2_x, speed2_y, color_text, color_outline)
 
 def our_snake(block_size, snake_List, player):
     """Disegna il serpente sullo schermo."""
     if player == 2:
         for i, x in enumerate(snake_List):
             color = ( max(0, 255 - i * 5), 0, 0)
-            pygame.draw.rect(screen, (0, 0, 0), [x[0] - 2, x[1] - 2, block_size + 4, block_size + 4], border_radius=5)
+            pygame.draw.rect(screen, color_outline, [x[0] - 2, x[1] - 2, block_size + 4, block_size + 4], border_radius=5)
             pygame.draw.rect(screen, color, [x[0], x[1], block_size, block_size], border_radius=5)
     else:    
         for i, x in enumerate(snake_List):
             color = (0, max(0, 255 - i * 5), 0)
-            pygame.draw.rect(screen, (0, 0, 0), [x[0] - 2, x[1] - 2, block_size + 4, block_size + 4], border_radius=5)
+            pygame.draw.rect(screen, color_outline, [x[0] - 2, x[1] - 2, block_size + 4, block_size + 4], border_radius=5)
             pygame.draw.rect(screen, color, [x[0], x[1], block_size, block_size], border_radius=5)
 
 #Funzioni di Gioco
@@ -530,7 +596,7 @@ def gameMenu():
     """Mostra il menu principale del gioco e gestisce la navigazione tra le opzioni."""
     menu = True
     selected_option = 0
-    options = ["Play", "High Score", "Mode", "Resolution", "Quit"]
+    options = ["Play", "High Score", "Mode", "Resolution","Theme", "Quit"]
     while menu:
         draw_menu("Snake Game", options, selected_option, score=None, high_score=None, resolutions=None, is_fullscreen=None, all_high_scores=None, game_mode=None)
         pygame.display.update()
@@ -552,9 +618,10 @@ def gameMenu():
                 elif selected_option == 3:
                     changeResolution()
                 elif selected_option == 4:
+                    changeColorMenu()
+                elif selected_option == 5:
                     pygame.quit()
                     quit()
-
 def selectGameMode():
     """Mostra il menu per selezionare la modalità di gioco."""
     mode_menu = True
@@ -634,6 +701,29 @@ def changeDifficulty():
                 elif selected_option == 3:
                     difficulty_menu = False
 
+def changeColorMenu():
+    """Mostra il menu per cambiare i colori e gestisce la selezione."""
+    color_menu = True
+    selected_option = 0
+    options = list(themes.keys()) + ["Back"]
+    
+    while color_menu:
+        draw_menu("Scegli un Tema di Colore", options, selected_option)
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            selected_option, confirmed = handle_menu_input(options, selected_option, event)
+            if confirmed:
+                if selected_option == len(options) - 1:
+                    color_menu = False  
+                else:
+                    selected_theme = options[selected_option]
+                    change_theme(selected_theme)  
+
 def changeResolution():
     """Mostra il menu per cambiare la risoluzione e gestisce la selezione."""
     global WIDTH, HEIGHT, screen
@@ -681,7 +771,7 @@ def show_special_effect_menu(score, foodx, foody, player, game_mode, mode_high_s
     our_snake(BLOCK_SIZE, snake_List, player=1)  
     if game_mode == "1vs1":
         our_snake(BLOCK_SIZE, snake_List2, player=2)
-    pygame.draw.circle(screen, BLACK, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
+    pygame.draw.circle(screen, color_outline, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
 
     # Disegna il punteggio attuale
     if game_mode == "single":
@@ -731,7 +821,7 @@ def pauseMenu(score, current_high_score,game_mode):
                     gameMenu()                
     return True
 
-def gameOverMenu(score, mode_high_score,game_mode):
+def gameOverMenu(score, mode_high_score,game_mode,death_reason=None, ender_player=None):
     """Mostra il menu di fine gioco e gestisce la navigazione tra le opzioni."""
     game_close = True
     selected_option = 0
@@ -741,7 +831,10 @@ def gameOverMenu(score, mode_high_score,game_mode):
     if game_mode == "single":
         mode_high_score = max((rec["score"] for rec in records[CURRENT_DIFFICULTY]), default=0)
     while game_close:
-        draw_menu("Game Over", options, selected_option, score, mode_high_score, resolutions=None, is_fullscreen=None, all_high_scores=None, game_mode=game_mode)
+        if game_mode == "1vs1":
+            draw_menu("Game Over", options, selected_option, score, mode_high_score, resolutions=None, is_fullscreen=None, all_high_scores=None, game_mode=game_mode, death_reason=death_reason, ender_player=ender_player)
+        if game_mode == "single":    
+            draw_menu("Game Over", options, selected_option, score, mode_high_score, resolutions=None, is_fullscreen=None, all_high_scores=None, game_mode=game_mode, death_reason=death_reason, ender_player=ender_player)
         pygame.display.update()
 
         # Gestisci input utente
@@ -834,13 +927,13 @@ def gameLoop():
         
         # Disegna lo sfondo e il cibo
         draw_background()
-        pygame.draw.circle(screen, BLACK, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
-        pygame.draw.circle(screen, WHITE, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 - 2)
+        pygame.draw.circle(screen, color_outline, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
+        pygame.draw.circle(screen, color_text, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 - 2)
 
         # Gestione del cibo speciale
         if special_food_timer > 0:
-            pygame.draw.circle(screen, BLACK, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
-            pygame.draw.circle(screen, DARK_GREY, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 -2)
+            pygame.draw.circle(screen, color_outline, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
+            pygame.draw.circle(screen, color_bg, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 -2)
             special_food_timer -= 1
         elif special_food_timer == 0 and random.randint(1, 100) == 1:
             special_foodx = round(random.randrange(0, WIDTH - BLOCK_SIZE) / BLOCK_SIZE) * BLOCK_SIZE
@@ -910,6 +1003,7 @@ def gameLoop1vs1():
     SPEED1, SPEED2 = 10, 10  # Velocità iniziale per entrambi i giocatori
     food_points_multiplier1, food_points_multiplier2 = 1.0, 1.0
     special_food_points_multiplier1, special_food_points_multiplier2 = 1.0, 1.0
+    ender_player = "player 1"
     if CURRENT_DIFFICULTY == "Relaxed":
         initial_speed = 8 
     elif CURRENT_DIFFICULTY == "Balanced":
@@ -922,7 +1016,7 @@ def gameLoop1vs1():
     SPEED2 = initial_speed
     while not game_over:
         while game_close:
-            game_over = not gameOverMenu(score1, score2,game_mode="1vs1")
+            game_over = not gameOverMenu(score1, score2,game_mode="1vs1",death_reason=death_reason,ender_player=ender_player)
             if not game_over:
                 break  
 
@@ -994,13 +1088,13 @@ def gameLoop1vs1():
         
         # Disegna lo sfondo e il cibo
         draw_background()
-        pygame.draw.circle(screen, BLACK, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
-        pygame.draw.circle(screen, WHITE, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 - 2)
+        pygame.draw.circle(screen, color_outline, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
+        pygame.draw.circle(screen, color_text, (foodx + BLOCK_SIZE // 2, foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 - 2)
 
         # Gestione del cibo speciale
         if special_food_timer > 0:
-            pygame.draw.circle(screen, BLACK, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
-            pygame.draw.circle(screen, DARK_GREY, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 -2)
+            pygame.draw.circle(screen, color_outline, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2)
+            pygame.draw.circle(screen, color_bg, (special_foodx + BLOCK_SIZE // 2, special_foody + BLOCK_SIZE // 2), BLOCK_SIZE // 2 -2)
             special_food_timer -= 1
         elif special_food_timer == 0 and random.randint(1, 100) == 1:
             special_foodx = round(random.randrange(0, WIDTH - BLOCK_SIZE) / BLOCK_SIZE) * BLOCK_SIZE
@@ -1013,8 +1107,14 @@ def gameLoop1vs1():
         if len(snake_List1) > Length_of_snake1:
             del snake_List1[0]
         for block in snake_List1[:-1]:
-            if block == snake_Head1:
+            if block == snake_Head1 or block == snake_Head2:
                 game_close = True
+                if block == snake_Head1:
+                    death_reason = "Penalità per aver sbattuto contro te stesso"
+                    ender_player = "player 1"
+                elif block == snake_Head2:
+                    death_reason = "Penalità per aver sbattuto contro l'avversario"
+                    ender_player = "player 1"
 
         our_snake(BLOCK_SIZE, snake_List1, player=1) 
 
@@ -1026,6 +1126,14 @@ def gameLoop1vs1():
         for block in snake_List2[:-1]:
             if block == snake_Head2 or block == snake_Head1:
                 game_close = True
+                if block == snake_Head2:
+                    death_reason = "Penalità per aver sbattuto contro te stesso"
+                    penalty = -0.20  # -20% punteggio
+                    ender_player = "player 2"
+                elif block == snake_Head1:
+                    death_reason = "Penalità per aver sbattuto contro l'avversario"
+                    penalty2 = -0.10  # -10% punteggio
+                    ender_player = "player 2"
 
         our_snake(BLOCK_SIZE, snake_List2, player=2) 
 
@@ -1067,7 +1175,7 @@ def gameLoop1vs1():
 
         # Aggiorna lo schermo
         pygame.display.update()
-        clock.tick(min(SPEED1, SPEED2))  # Limita la velocità al più lento dei due giocatori
+        clock.tick(max(SPEED1, SPEED2))  # Limita la velocità al più lento dei due giocatori
         check_for_special_effect_activation(score1, foodx, foody, player=1, game_mode="1vs1", mode_high_score = None)
         check_for_special_effect_activation(score2, foodx, foody, player=2, game_mode="1vs1", mode_high_score = None)
     pygame.quit()
